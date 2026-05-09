@@ -465,11 +465,6 @@ public class AuditLogStorage {
         pruneExpiredLogFiles(getAuditLogsDir(), retentionDays);
     }
 
-    private void pruneExpiredLogFiles(File logDirectory, AuditLoggerConfiguration config) {
-        int retentionDays = config != null ? config.getLogRetentionDays() : 90;
-        pruneExpiredLogFiles(logDirectory, retentionDays);
-    }
-
     private void pruneExpiredLogFiles(File logDirectory, int retentionDays) {
         if (retentionDays <= 0) {
             return;

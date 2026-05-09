@@ -642,7 +642,7 @@ public class AuditRunListener extends RunListener<Run<?, ?>> {
     private static String currentUser() {
         // 0. Try extracting user from HTTP Basic Auth header (works even under ACL.SYSTEM impersonation)
         try {
-            javax.servlet.http.HttpServletRequest req = RequestHolder.get();
+            jakarta.servlet.http.HttpServletRequest req = RequestHolder.get();
             if (req != null) {
                 String authHeader = req.getHeader("Authorization");
                 if (authHeader != null && authHeader.startsWith("Basic ")) {
@@ -653,7 +653,7 @@ public class AuditRunListener extends RunListener<Run<?, ?>> {
             }
         } catch (RuntimeException ignored) {}
         try {
-            org.kohsuke.stapler.StaplerRequest staplerReq = org.kohsuke.stapler.Stapler.getCurrentRequest();
+            org.kohsuke.stapler.StaplerRequest2 staplerReq = org.kohsuke.stapler.Stapler.getCurrentRequest2();
             if (staplerReq != null) {
                 String authHeader = staplerReq.getHeader("Authorization");
                 if (authHeader != null && authHeader.startsWith("Basic ")) {
@@ -665,9 +665,9 @@ public class AuditRunListener extends RunListener<Run<?, ?>> {
         } catch (RuntimeException ignored) {}
         // 1. Try session-based Spring Security context
         try {
-            javax.servlet.http.HttpServletRequest req = RequestHolder.get();
+            jakarta.servlet.http.HttpServletRequest req = RequestHolder.get();
             if (req != null) {
-                javax.servlet.http.HttpSession session = req.getSession(false);
+                jakarta.servlet.http.HttpSession session = req.getSession(false);
                 if (session != null) {
                     Object ctx = session.getAttribute("SPRING_SECURITY_CONTEXT");
                     if (ctx != null) {
@@ -688,7 +688,7 @@ public class AuditRunListener extends RunListener<Run<?, ?>> {
         } catch (ReflectiveOperationException | RuntimeException ignored) {}
         // 2. Try Stapler request
         try {
-            org.kohsuke.stapler.StaplerRequest req = org.kohsuke.stapler.Stapler.getCurrentRequest();
+            org.kohsuke.stapler.StaplerRequest2 req = org.kohsuke.stapler.Stapler.getCurrentRequest2();
             if (req != null) {
                 String remoteUser = req.getRemoteUser();
                 if (isRealUser(remoteUser)) return remoteUser;

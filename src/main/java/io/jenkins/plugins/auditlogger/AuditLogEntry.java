@@ -1,7 +1,7 @@
 package io.jenkins.plugins.auditlogger;
 
 import org.kohsuke.stapler.Stapler;
-import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerRequest2;
 
 import java.io.Serializable;
 import java.time.Instant;
@@ -77,7 +77,7 @@ public class AuditLogEntry implements Serializable {
     }
 
     private void populateRequestContext() {
-        StaplerRequest req = Stapler.getCurrentRequest();
+        StaplerRequest2 req = Stapler.getCurrentRequest2();
         if (req != null) {
             if (this.sourceIp == null) {
                 this.sourceIp = extractClientIp(req);
@@ -98,7 +98,7 @@ public class AuditLogEntry implements Serializable {
         }
     }
 
-    private static String extractClientIp(StaplerRequest req) {
+    private static String extractClientIp(StaplerRequest2 req) {
         String xff = req.getHeader("X-Forwarded-For");
         if (xff != null && !xff.isEmpty()) {
             return stripBrackets(xff.split(",")[0].trim());
@@ -117,7 +117,7 @@ public class AuditLogEntry implements Serializable {
         return ip;
     }
 
-    private static String detectAuthMethod(StaplerRequest req) {
+    private static String detectAuthMethod(StaplerRequest2 req) {
         String authHeader = req.getHeader("Authorization");
         if (authHeader != null) {
             if (authHeader.startsWith("Basic ")) return "basic-auth";

@@ -2,13 +2,12 @@ package io.jenkins.plugins.auditlogger;
 
 import hudson.Extension;
 import hudson.model.RootAction;
+import jakarta.servlet.ServletException;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
-
-import javax.servlet.ServletException;
+import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.StaplerResponse2;
 import java.io.IOException;
 import java.util.List;
 import java.util.logging.Level;
@@ -39,7 +38,7 @@ public class AuditLogRestApi implements RootAction {
         return null; // hide from sidebar
     }
 
-    public void doApi(StaplerRequest req, StaplerResponse resp) throws IOException, ServletException {
+    public void doApi(StaplerRequest2 req, StaplerResponse2 resp) throws IOException, ServletException {
         AuditLoggerConfiguration config = AuditLoggerConfiguration.get();
         if (config == null || !config.isEnableAuditApi()) {
             resp.setStatus(403);

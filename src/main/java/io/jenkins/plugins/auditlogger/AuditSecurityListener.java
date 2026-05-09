@@ -1,14 +1,13 @@
 package io.jenkins.plugins.auditlogger;
 
 import hudson.Extension;
+import jakarta.servlet.http.HttpServletRequest;
 import org.kohsuke.stapler.Stapler;
-import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerRequest2;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetails;
-
-import javax.servlet.http.HttpServletRequest;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -207,7 +206,7 @@ public class AuditSecurityListener extends jenkins.security.SecurityListener {
 
         // 2. Stapler — set by the Stapler servlet (also runs after security chain)
         try {
-            StaplerRequest sr = Stapler.getCurrentRequest();
+            StaplerRequest2 sr = Stapler.getCurrentRequest2();
             if (sr != null) return sr;
         } catch (RuntimeException ignored) {}
 

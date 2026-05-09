@@ -4,8 +4,6 @@ import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import jenkins.model.Jenkins;
-
-import javax.servlet.ServletContext;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -25,7 +23,7 @@ public class AuditSessionListenerInitializer {
         try {
             Jenkins jenkins = Jenkins.getInstanceOrNull();
             if (jenkins == null) return;
-            ServletContext ctx = jenkins.servletContext;
+            var ctx = jenkins.servletContext;
             ctx.addListener(new AuditSessionListener());
             registered = true;
             LOGGER.info("Audit Session Listener registered with servlet context");

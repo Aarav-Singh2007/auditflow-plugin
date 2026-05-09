@@ -1,10 +1,11 @@
 package io.jenkins.plugins.auditlogger;
 
 import hudson.Extension;
+import hudson.model.Descriptor;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
-import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerRequest2;
 
 import java.time.DateTimeException;
 import java.time.ZoneId;
@@ -132,7 +133,7 @@ public class AuditLoggerConfiguration extends GlobalConfiguration {
     }
 
     @Override
-    public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
+    public boolean configure(StaplerRequest2 req, JSONObject json) throws Descriptor.FormException {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
         try {
             enableAuthenticationEvents = readBoolean(json, "enableAuthenticationEvents", enableAuthenticationEvents);

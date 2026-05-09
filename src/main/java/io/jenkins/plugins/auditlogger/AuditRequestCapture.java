@@ -3,12 +3,17 @@ package io.jenkins.plugins.auditlogger;
 import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.FilterConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletRequestEvent;
+import jakarta.servlet.ServletRequestListener;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jenkins.model.Jenkins;
-
-import javax.servlet.ServletContext;
-import javax.servlet.ServletRequestEvent;
-import javax.servlet.ServletRequestListener;
-import javax.servlet.http.HttpServletRequest;
 import java.lang.reflect.Method;
 import java.security.Principal;
 import java.util.logging.Level;
@@ -33,7 +38,7 @@ public class AuditRequestCapture {
         try {
             Jenkins jenkins = Jenkins.getInstanceOrNull();
             if (jenkins == null) return;
-            ServletContext ctx = jenkins.servletContext;
+            var ctx = jenkins.servletContext;
             ctx.addListener(new ServletRequestListener() {
                 @Override
                 public void requestInitialized(ServletRequestEvent sre) {
@@ -65,14 +70,14 @@ public class AuditRequestCapture {
 
     private static void registerFallbackFilter() {
         try {
-            hudson.util.PluginServletFilter.addFilter(new javax.servlet.Filter() {
+            hudson.util.PluginServletFilter.addFilter(new Filter() {
                 @Override
-                public void init(javax.servlet.FilterConfig fc) {}
+                public void init(FilterConfig fc) {}
 
                 @Override
-                public void doFilter(javax.servlet.ServletRequest req, javax.servlet.ServletResponse res,
-                                     javax.servlet.FilterChain chain)
-                        throws java.io.IOException, javax.servlet.ServletException {
+                public void doFilter(ServletRequest req, ServletResponse res,
+                                     FilterChain chain)
+                        throws java.io.IOException, ServletException {
                     if (req instanceof HttpServletRequest) {
                         HttpServletRequest httpReq = (HttpServletRequest) req;
                         RequestHolder.set(httpReq);
@@ -116,23 +121,32 @@ public class AuditRequestCapture {
     }
 
     /**
-     * Detect critical admin operations by URL pattern on POST requests.
-     * Covers: Safe Restart, Plugin Install/Uninstall/Enable/Disable, Security Config.
+     * Detect critical admin operations using route-aware URL matching.
+     * 
+     * SECURITY IMPROVEMENTS:
+     * - Uses RouteAwareUrlMatcher instead of naive string matching
+     * - Prevents bypass via arbitrary prefixes/suffixes
+     * - Detects script console access (critical security event)
+     * - Validates URI structure before classification
+     * 
+     * Covers: Safe Restart, Plugin Operations, Security Config, Script Console.
      */
     private static void detectAdminAction(HttpServletRequest req) {
         try {
             String method = req.getMethod();
-            if (!"POST".equalsIgnoreCase(method)) return;
+            // Also check GET for script console access (some endpoints are GET)
+            if (!("POST".equalsIgnoreCase(method) || "GET".equalsIgnoreCase(method))) {
+                return;
+            }
 
             String uri = req.getRequestURI();
             if (uri == null) return;
 
-            // Normalize: strip context path and trailing slash
+            // Normalize: strip context path
             String ctx = req.getContextPath();
             if (ctx != null && !ctx.isEmpty() && uri.startsWith(ctx)) {
                 uri = uri.substring(ctx.length());
             }
-            if (uri.endsWith("/")) uri = uri.substring(0, uri.length() - 1);
 
             AuditLoggerConfiguration config = AuditLoggerConfiguration.get();
             boolean pluginEventsEnabled = config == null || config.isEnablePluginEvents();
@@ -146,67 +160,69 @@ public class AuditRequestCapture {
             String details = null;
             String severity = "HIGH";
 
-            // Safe Restart / Restart — always captured (audit-critical)
-            if ("/safeRestart".equals(uri) || "/restart".equals(uri)
-                    || "/manage/safeRestart".equals(uri) || "/manage/restart".equals(uri)) {
+            // ===== RESTART (route-aware matching) =====
+            // Now prevents bypass via /static/lol/restart or /job/restart
+            if ("POST".equalsIgnoreCase(method) && RouteAwareUrlMatcher.isRestartAction(uri)) {
                 action = "SYSTEM_RESTART";
                 target = "Jenkins";
                 boolean isSafe = uri.contains("safe");
                 details = (isSafe ? "Safe" : "Immediate") + " restart initiated by " + username;
                 severity = "CRITICAL";
             }
-            // Plugin install — always captured (audit-critical)
-            else if (pluginEventsEnabled && isPluginInstallUri(uri)) {
-                action = "PLUGIN_INSTALLED";
-                target = extractPluginTarget(req, uri);
-                details = "Plugin installed: " + target + " by " + username;
-            }
-            // Plugin uninstall / removal — always captured (audit-critical)
-            else if (pluginEventsEnabled && "PLUGIN_REMOVED".equals(classifyPluginAction(uri))) {
-                action = "PLUGIN_REMOVED";
-                target = extractPluginNameFromUri(uri);
-                details = "Plugin removed: " + target + " by " + username;
-                severity = "CRITICAL";
-            }
-            // Plugin update
-            else if (pluginEventsEnabled && isPluginUpdateUri(uri)) {
-                action = "PLUGIN_UPDATED";
-                target = extractPluginTarget(req, uri);
-                details = "Plugin updated: " + target + " by " + username;
-            }
-            // Plugin enable/disable
-            else if (pluginEventsEnabled) {
-                action = classifyPluginAction(uri);
-                if ("PLUGIN_ENABLED".equals(action) || "PLUGIN_DISABLED".equals(action)) {
-                    boolean enable = "PLUGIN_ENABLED".equals(action);
-                    target = extractPluginNameFromUri(uri);
-                    details = "Plugin " + (enable ? "enabled" : "disabled") + ": " + target + " by " + username;
+            // ===== SCRIPT CONSOLE ACCESS (NEW - CRITICAL SECURITY) =====
+            // Detects script console/scriptText access regardless of URL structure
+            else if (systemConfigEventsEnabled && RouteAwareUrlMatcher.isScriptConsoleAccess(uri)) {
+                action = "SCRIPT_CONSOLE_ACCESSED";
+                target = "ScriptConsole";
+                String scriptContent = req.getParameter("script");
+                if (scriptContent != null && !scriptContent.isEmpty()) {
+                    String preview = scriptContent.substring(0, Math.min(50, scriptContent.length()));
+                    details = "Script console accessed: " + preview + "... by " + username;
                 } else {
-                    action = null;
+                    details = "Script console accessed by " + username;
+                }
+                severity = "CRITICAL";
+                // Also call the ScriptListener for reliable event capture
+                AuditScriptListener.recordScriptConsoleAccess(scriptContent, uri);
+            }
+            // ===== PLUGIN OPERATIONS (route-aware matching) =====
+            else if (pluginEventsEnabled && "POST".equalsIgnoreCase(method) && RouteAwareUrlMatcher.isPluginManagerAction(uri)) {
+                String pluginAction = classifyPluginAction(uri);
+                if ("PLUGIN_INSTALLED".equals(pluginAction)) {
+                    action = "PLUGIN_INSTALLED";
+                    target = extractPluginTarget(req, uri);
+                    details = "Plugin installed: " + target + " by " + username;
+                } else if ("PLUGIN_REMOVED".equals(pluginAction)) {
+                    action = "PLUGIN_REMOVED";
+                    target = RouteAwareUrlMatcher.extractPluginName(uri);
+                    if (target == null) target = "unknown-plugin";
+                    details = "Plugin removed: " + target + " by " + username;
+                    severity = "CRITICAL";
+                } else if ("PLUGIN_UPDATED".equals(pluginAction)) {
+                    action = "PLUGIN_UPDATED";
+                    target = extractPluginTarget(req, uri);
+                    details = "Plugin updated: " + target + " by " + username;
+                } else if ("PLUGIN_ENABLED".equals(pluginAction) || "PLUGIN_DISABLED".equals(pluginAction)) {
+                    action = pluginAction;
+                    boolean enable = "PLUGIN_ENABLED".equals(pluginAction);
+                    target = RouteAwareUrlMatcher.extractPluginName(uri);
+                    if (target == null) target = "unknown-plugin";
+                    details = "Plugin " + (enable ? "enabled" : "disabled") + ": " + target + " by " + username;
                 }
             }
-            // Security realm / authorization config changes
-            else if (systemConfigEventsEnabled && uri.contains("/configureSecurity")) {
-                action = "SECURITY_CONFIG_UPDATED";
-                target = "SecurityRealm";
-                details = "Security configuration updated by " + username;
-                severity = "CRITICAL";
-            }
-            // Global configuration changes
-            else if (systemConfigEventsEnabled
-                    && (uri.equals("/manage/configure") || uri.equals("/configSubmit") || uri.equals("/manage/configSubmit"))) {
-                action = "GLOBAL_CONFIG_UPDATED";
-                target = "GlobalConfig";
-                details = "Global configuration updated by " + username;
-                severity = "HIGH";
-            }
-            // Authorization strategy changes
-            else if (systemConfigEventsEnabled
-                    && (uri.contains("/configureSecurity") || (uri.contains("/manage/") && uri.contains("authorizationStrategy")))) {
-                action = "AUTH_STRATEGY_CHANGED";
-                target = "AuthorizationStrategy";
-                details = "Authorization strategy changed by " + username;
-                severity = "CRITICAL";
+            // ===== CONFIGURATION CHANGES (route-aware matching) =====
+            else if ("POST".equalsIgnoreCase(method) && systemConfigEventsEnabled && RouteAwareUrlMatcher.isConfigurationChange(uri)) {
+                if (uri.contains("configureSecurity")) {
+                    action = "SECURITY_CONFIG_UPDATED";
+                    target = "SecurityRealm";
+                    details = "Security configuration updated by " + username;
+                    severity = "CRITICAL";
+                } else {
+                    action = "GLOBAL_CONFIG_UPDATED";
+                    target = "GlobalConfig";
+                    details = "Global configuration updated by " + username;
+                    severity = "HIGH";
+                }
             }
 
             if (action != null) {
@@ -251,40 +267,50 @@ public class AuditRequestCapture {
     }
 
     static boolean isPluginInstallUri(String uri) {
-        return uri.contains("/pluginManager/install") || uri.contains("/pluginManager/uploadPlugin");
+        // Use route-aware matching instead of naive contains()
+        // Prevents false positives like /job/myplugins/...
+        return RouteAwareUrlMatcher.isPluginManagerAction(uri) &&
+               (uri.contains("/install") || uri.contains("/uploadPlugin"));
     }
 
     static boolean isPluginUpdateUri(String uri) {
-        return uri != null && uri.matches(".*/pluginManager/(deploy|update)$");
+        // Route-aware matching for plugin update endpoints
+        return RouteAwareUrlMatcher.isPluginManagerAction(uri) &&
+               uri.matches(".*/pluginManager/(deploy|update)$");
     }
 
     static String classifyPluginAction(String uri) {
-        if (uri == null) return null;
-        if ((uri.contains("/pluginManager/plugin/") && uri.contains("/uninstall"))
-                || (uri.contains("/plugin/") && uri.endsWith("/doUninstall"))) {
+        if (uri == null || !RouteAwareUrlMatcher.isPluginManagerAction(uri)) {
+            return null;
+        }
+        
+        // Route-aware classification of plugin actions
+        if ((uri.contains("/pluginManager/plugin/") || uri.contains("/plugin/")) && 
+            (uri.contains("/uninstall") || uri.endsWith("/doUninstall"))) {
             return "PLUGIN_REMOVED";
         }
-        if ((uri.contains("/pluginManager/plugin/") || uri.contains("/plugin/"))
-                && (uri.contains("/makeEnabled") || uri.endsWith("/enable"))) {
+        if ((uri.contains("/pluginManager/plugin/") || uri.contains("/plugin/")) && 
+            (uri.contains("/makeEnabled") || uri.contains("/enable"))) {
             return "PLUGIN_ENABLED";
         }
-        if ((uri.contains("/pluginManager/plugin/") || uri.contains("/plugin/"))
-                && (uri.contains("/makeDisabled") || uri.endsWith("/disable"))) {
+        if ((uri.contains("/pluginManager/plugin/") || uri.contains("/plugin/")) && 
+            (uri.contains("/makeDisabled") || uri.contains("/disable"))) {
             return "PLUGIN_DISABLED";
+        }
+        if (uri.contains("/pluginManager/") && 
+            (uri.contains("/install") || uri.contains("/deploy") || uri.contains("/update"))) {
+            return "PLUGIN_INSTALLED";
         }
         return null;
     }
 
-    /** Extract plugin short name from URI like /pluginManager/plugin/git/uninstall. */
+    /** 
+     * Extract plugin name from URI using route-aware matching.
+     * More reliable than splitting by "/" which fails with complex paths.
+     */
     static String extractPluginNameFromUri(String uri) {
-        // pattern: /pluginManager/plugin/{name}/{action}
-        String[] parts = uri.split("/");
-        for (int i = 0; i < parts.length - 1; i++) {
-            if ("plugin".equals(parts[i]) && i + 1 < parts.length) {
-                return parts[i + 1];
-            }
-        }
-        return "unknown-plugin";
+        String name = RouteAwareUrlMatcher.extractPluginName(uri);
+        return name != null ? name : "unknown-plugin";
     }
 
     /**
@@ -332,7 +358,7 @@ public class AuditRequestCapture {
     private static String resolveUsername(HttpServletRequest req) {
         // 1. Try session-based Spring Security context (preserves real user even in impersonated context)
         try {
-            javax.servlet.http.HttpSession session = req.getSession(false);
+            HttpSession session = req.getSession(false);
             if (session != null) {
                 Object ctx = session.getAttribute("SPRING_SECURITY_CONTEXT");
                 if (ctx != null) {

@@ -1,27 +1,27 @@
- # AuditFlow – Jenkins Audit Logs You Can Actually Understand
+# AuditFlow – Jenkins Audit Logs You Can Actually Understand
 
-**Stop digging through Jenkins logs. Start understanding what's happening.**
+AuditFlow is a lightweight Jenkins plugin that turns raw audit logs into a clean, searchable dashboard.
 
-AuditFlow is a lightweight Jenkins plugin that transforms raw audit logs into a clean, searchable dashboard. Instead of hunting through system logs to figure out what happened, you get instant visibility into:
+Instead of digging through system logs, you can instantly see:
+- Who triggered a build
+- What changed in jobs or configuration
+- When credentials were created or updated
+- Where actions originated from (IP, auth type)
 
-- **Who** triggered a build or made changes
-- **What** changed in jobs and configurations
-- **When** credentials were created, updated, or accessed
-- **Where** actions came from (source IP, authentication method)
-
-It's built for real-world debugging and compliance auditing—without the complexity of external tools.
+Built for real-world debugging and audit visibility.
 
 ---
 
-## Why Use AuditFlow?
+## 🚀 Why AuditFlow?
 
-**Most Jenkins audit plugins just log things. AuditFlow helps you understand them.**
+Most Jenkins audit plugins focus on logging.
 
-- ⚡ **No external tools needed** – No ELK, Splunk, or complex setup required
-- 🎯 **Works out-of-the-box** – Install, configure once, and get instant visibility
-- 👀 **Built for engineers** – Clean UI, filtering, search—designed for actual use, not just compliance checkboxes
-- 🚀 **Zero performance impact** – Async logging means your builds stay fast
-- 📊 **Visual insights** – Color-coded severity badges for quick problem identification
+**AuditFlow focuses on visibility.**
+
+- No need for external tools (ELK, Splunk)
+- Built-in UI with filtering and search
+- Works out-of-the-box
+- Designed for engineers, not auditors
 
 ---
 
@@ -36,20 +36,34 @@ It's built for real-world debugging and compliance auditing—without the comple
 ### Manage Jenkins – AuditFlow Logs
 ![Manage Jenkins](src/screenshots/08-manage-jenkins.png)
 
+### Configuration – Event Categories
+![Event Categories](src/screenshots/01-config-event-categories.png)
+
+### Configuration – Risk Detection
+![Risk Detection](src/screenshots/02-config-risk-detection.png)
+
+### Configuration – Log Retention & Dashboard
+![Retention & Dashboard](src/screenshots/03-config-retention-dashboard.png)
+
+### Configuration – Export & REST API
+![Export & API](src/screenshots/04-config-export-api.png)
+
+### Configuration – Optimization & Data Masking
+![Optimization & Masking](src/screenshots/05-config-optimization-masking.png)
+
 ---
 
 ## Features
 
-**Real audit visibility, not just logs:**
-
-- **Searchable Dashboard** – Find exactly what you need with 100/500/1000 entries per page, filtering, and full-text search
-- **Color-Coded Severity** – Visual badges (Critical, High, Medium, Low, Info) make problems jump off the screen
-- **IP Address Tracking** – See where every action came from with automatic IP-to-hostname resolution
-- **Smart Export** – Download logs as CSV, JSON, or TXT with protection against formula injection attacks
-- **REST API** – Query logs programmatically at `/auditflow/api/logs` for integrations
-- **Automatic Log Rotation** – Old logs clean up themselves—configurable by size and retention days
-- **Data Masking** – Tokens, passwords, and credit cards are automatically masked in log details
-- **Build-Safe Async** – Everything runs asynchronously in the background with <0.1% performance impact on builds
+- **Paginated Audit Viewer** – 100/500/1000 per page with filtering and search
+- **Color-Coded Severity** – Visual badges (Critical, High, Medium, Low, Info)
+- **IP Address Tracking** – Source IP capture with async caching
+- **Export** – CSV, JSON, TXT with formula-injection protection
+- **REST API** – Query logs at `/auditflow/api/logs`
+- **Risk Detection** – Failed login tracking, off-hours alerts, production job changes
+- **Log Rotation** – Automatic rotation with configurable retention
+- **Data Masking** – Mask tokens, emails, credit cards in log details
+- **Async & Non-Blocking** – Zero impact on build performance
 
 ## Requirements
 
@@ -58,111 +72,79 @@ It's built for real-world debugging and compliance auditing—without the comple
 
 ## Installation
 
-### Option 1: Build from Source
-
-If you want to build the plugin yourself:
+### Build from Source
 
 ```bash
-mvnw.cmd clean package -DskipTests
+mvn clean package -DskipTests
 ```
 
-This generates `target/auditflow.hpi` ready to install.
+Output: `target/auditflow.hpi`
 
-### Option 2: Install in Jenkins
+### Install in Jenkins
 
-**Via Jenkins UI (Easiest):**
-1. Go to **Manage Jenkins** → **Manage Plugins** → **Advanced settings**
-2. Upload your `auditflow.hpi` file
+1. **Manage Jenkins -> Plugins -> Advanced -> Upload Plugin**
+2. Upload `auditflow.hpi`
 3. Restart Jenkins
 
-**Via Command Line (Linux/Mac):**
+Or copy directly:
+
 ```bash
 cp auditflow.hpi $JENKINS_HOME/plugins/
 systemctl restart jenkins
 ```
 
-**Via Docker:**
-```bash
-docker run -v /your/plugins:/var/jenkins_home/plugins jenkins/jenkins:latest
-```
-Just drop `auditflow.hpi` in your plugins volume.
-
-After restart, you'll see **AuditFlow Logs** in the Manage Jenkins menu.
-
 ## Configuration
 
-**First time setup:** Go to **Manage Jenkins** → **Configure System** → Find **AuditFlow Configuration**
-
-Most settings work out-of-the-box, but here's what you can customize:
+**Manage Jenkins -> Configure System -> AuditFlow Configuration**
 
 ### Event Categories
 
-Choose what gets logged. By default, all are tracked:
+| Category | Events |
+|----------|--------|
+| Authentication | LOGIN, LOGOUT, FAILED_LOGIN, API_AUTH, SSO_LOGIN |
+| Builds | BUILD_STARTED, BUILD_COMPLETED, BUILD_DELETED |
+| Jobs | JOB_CREATED, JOB_UPDATED, JOB_DELETED, JOB_RENAMED, JOB_COPIED |
+| Credentials | CREDENTIAL_CREATED, CREDENTIAL_ACCESSED, CREDENTIAL_UPDATED, CREDENTIAL_DELETED |
+| System | USER_CONFIG_UPDATED, SECURITY_REALM_CHANGED |
+| Plugins | PLUGIN_INSTALLED, PLUGIN_UNINSTALLED |
 
-| Category | What Gets Logged | Use This For |
-|----------|---|---|
-| **Authentication** | Logins, logouts, failed auth attempts | Security audits, detecting break-in attempts |
-| **Builds** | Build started/completed/deleted events | Understanding job history and troubleshooting |
-| **Jobs** | Job creation, updates, deletions, renames | Configuration change tracking |
-| **Credentials** | When credentials are created, accessed, updated | Compliance and access auditing |
-| **System** | System config changes, security settings | Major infrastructure changes |
-| **Plugins** | Plugin installs and uninstalls | Software inventory tracking |
+### Severity & Badge Colors
 
-### Severity Levels
-
-Events are color-coded so critical stuff stands out:
-
-| Severity | Color | Examples |
-|----------|-------|----------|
-| **CRITICAL** | Red | Failed logins, security breaches |
-| **HIGH** | Orange | Deleting jobs or major config changes |
-| **MEDIUM** | Blue | Normal logins and config updates |
-| **LOW** | Green | Job/credential creation, successful builds |
-| **INFO** | Grey | System events and API access (usually muted) |
+| Severity | Color | Usage |
+|----------|-------|-------|
+| CRITICAL | Red (#a12d35) | Failed logins, security breaches |
+| HIGH | Orange (#b85a10) | Deletions, major config changes |
+| MEDIUM | Blue (#2563a8) | Logins, configuration updates |
+| LOW | Green (#146b43) | Job/credential creation, builds |
+| INFO | Grey (#5a6268) | API auth, system events (muted) |
 
 ### Log Storage
 
-Logs are stored locally in your Jenkins home:
 - **Location:** `$JENKINS_HOME/auditflow-logs/audit.jsonl`
-- **Format:** One JSON object per line (searchable, parseable)
-- **Memory Usage:** 10,000 entries kept in-memory ring buffer (fast searches)
-- **Auto-Cleanup:** Set max file size and how many days to keep logs
+- **Format:** JSON Lines (one JSON object per line)
+- **Buffer:** 10,000 entry in-memory ring buffer
+- **Rotation:** Configurable max file size and retention days
 
-## Using the Audit Dashboard
+## Audit Log Viewer
 
-**Access it:** Go to **Manage Jenkins** → **AuditFlow Logs**
+Access: **Manage Jenkins -> AuditFlow Logs**
 
-**What you can do:**
+- Filter by action, user, date range
+- Toggle "User-Initiated Only" to hide system noise
+- Paginate with 100/500/1000/All per page
+- Export filtered logs as CSV, JSON, or TXT
 
-- **Search** – Find any event by action, user, job name, IP address
-- **Filter** – View only what matters (failed logins, production changes, etc.)
-- **Hide the Noise** – Toggle "User-Initiated Only" to remove automated system events
-- **Paginate** – View 100, 500, 1000, or all entries at once
-- **Export** – Download filtered results as CSV, JSON, or TXT for reports or external systems
-- **Date Range** – Jump to a specific timeframe instantly
-
-**Common use cases:**
-- _"Who changed this job?"_ – Search by job name, see all modifications
-- _"When was that credential updated?"_ – Search by credential, see access history
-- _"Did anyone log in from outside our network?"_ – Filter by failed logins or unusual IPs
-- _"Generate a compliance report"_ – Export for your auditors
-
-## REST API (For Integration)
-
-**Want to pull audit logs programmatically?** Use the REST API:
+## REST API
 
 ```bash
-curl -u admin:your_api_token \
-  'http://your-jenkins.com/auditflow/api/logs?user=john&action=LOGIN&startTime=2026-01-01'
+curl -u admin:token \
+  'http://localhost:8080/auditflow/api/logs?user=john&action=LOGIN'
 ```
 
-**Query Parameters:**
-- `user` – Filter by username
-- `action` – Filter by event type (LOGIN, BUILD_STARTED, JOB_CREATED, etc.)
-- `startTime` – Start of date range (ISO 8601 format: 2026-01-01 or milliseconds)
-- `endTime` – End of date range
+Parameters: `user`, `action`, `startTime`, `endTime`
 
-**Example Response:**
+### Response
+
 ```json
 {
   "status": "success",
@@ -182,42 +164,30 @@ curl -u admin:your_api_token \
 }
 ```
 
-**Use this to:**
-- Integrate with SIEM systems
-- Build custom dashboards
-- Trigger alerts based on events
-- Feed data into compliance tools
+## Event Types
 
-## Event Types Reference
+### Authentication Events
+- `LOGIN` - User login successfully
+- `LOGOUT` - User logout
+- `LOGIN_FAILED` - Authentication failed
+- `API_AUTH` - API token or basic auth used
 
-**When you look up logs, these are the events you'll see:**
+### Build Events
+- `BUILD_STARTED` - Build queued and starting
+- `BUILD_COMPLETED` - Build finished with result
+- `BUILD_DELETED` - Build record deleted
 
-### Login & Security
-- `LOGIN` – User successfully logged in
-- `LOGOUT` – User logged out
-- `LOGIN_FAILED` – Authentication attempt failed (potential breach attempt)
-- `API_AUTH` – Someone used an API token or basic auth
+### Job Events
+- `JOB_CREATED` - New job/pipeline created
+- `JOB_UPDATED` - Job configuration modified
+- `JOB_DELETED` - Job deleted
+- `JOB_RENAMED` - Job renamed
+- `JOB_COPIED` - Job template copied
 
-### Build Activity
-- `BUILD_STARTED` – Build queued and started executing
-- `BUILD_COMPLETED` – Build finished (with result: SUCCESS, FAILURE, etc.)
-- `BUILD_DELETED` – Build record deleted from Jenkins
-
-### Job Management
-- `JOB_CREATED` – New job or pipeline created
-- `JOB_UPDATED` – Job configuration was modified
-- `JOB_DELETED` – Job was permanently deleted
-- `JOB_RENAMED` – Job renamed
-- `JOB_COPIED` – Job duplicated from a template
-
-### Configuration Changes
-- `CONFIG_CHANGED` – System or job configuration saved
-- `CREDENTIAL_UPDATED` – Stored credentials were changed
-- `CREDENTIAL_ACCESSED` – Someone used a stored credential
-- `PLUGIN_INSTALLED` – New plugin installed or existing one updated
-- `PLUGIN_UNINSTALLED` – Plugin removed
-
-**Tip:** Use filters to focus on the events that matter for your use case.
+### Configuration Events
+- `CONFIG_CHANGED` - System or job configuration saved
+- `CREDENTIAL_UPDATED` - Credentials modified
+- `PLUGIN_INSTALLED` - Plugin installed or updated
 
 ## Log Entry Format
 
@@ -238,83 +208,75 @@ curl -u admin:your_api_token \
 }
 ```
 
-## Performance & Resource Impact
+## Performance
 
-**Won't slow down your builds:**
+| Metric | Value |
+|--------|-------|
+| Logging latency | <1 ms (async) |
+| Memory footprint | 10-50 MB (configurable) |
+| Max entries buffered | 10,000 |
+| Log rotation check | Hourly |
+| Build execution impact | <0.1% |
 
-| Metric | Performance | What It Means |
-|--------|---|---|
-| **Logging Speed** | <1 ms | Audit entries are recorded instantly in memory |
-| **Memory Usage** | 10-50 MB | Configurable buffer, easily fits on any machine |
-| **Max Buffered** | 10,000 entries | Typical deployment handles weeks of logs in memory |
-| **Build Impact** | <0.1% | Completely invisible to build performance |
-| **Log Rotation Check** | Hourly | Old logs cleaned up automatically without blocking |
-
-**The bottom line:** AuditFlow is designed to be transparent—you get complete audit visibility without sacrificing Jenkins performance.
-
-## How It's Built
-
-**For developers who want to understand the architecture:**
+## Project Structure
 
 ```
-Core Components:
-├── AuditLoggerPlugin            # Entry point and initialization
-├── AuditLoggerConfiguration     # Where users configure settings
-├── AuditLogStorage              # Async engine that writes events to disk
-├── AuditLogIndex                # Fast in-memory index for searching
-└── AuditLogRestApi              # REST endpoint for programmatic access
-
-Event Capture:
-├── AuditSecurityListener        # Catches login/logout events
-├── AuditRunListener             # Catches build start/complete events
-├── AuditItemListener            # Catches job create/update/delete
-├── AuditSaveableListener        # Catches configuration changes
-├── AuditSessionListener         # Tracks user sessions
-└── AuditRequestCapture          # Captures source IPs and user agents
-
-Data Processing:
-├── AuditAlertEngine             # Triggers alerts on risky events
-├── AuditMetricsEngine           # Collects stats for dashboards
-├── DataMasker                   # Hides sensitive data
-└── LogRotationService           # Automatically cleans old logs
-
-User Interface:
-├── AuditLoggerManagementLink    # The dashboard UI
-└── AuditLogEntrySerializer      # Formats logs for display/export
+src/main/java/io/jenkins/plugins/auditlogger/
++-- AuditLoggerPlugin.java          # Plugin entry point
++-- AuditLoggerConfiguration.java   # Global configuration
++-- AuditLoggerManagementLink.java  # Web UI + exports
++-- AuditLogStorage.java            # Async storage engine
++-- AuditLogEntry.java              # Log entry model
++-- AuditLogEntrySerializer.java    # JSON serializer
++-- AuditLogRestApi.java            # REST API endpoint
++-- AuditLogIndex.java              # Fast indexed queries
++-- AuditSecurityListener.java      # Auth events
++-- AuditRunListener.java           # Build events
++-- AuditItemListener.java          # Job lifecycle
++-- AuditSaveableListener.java      # Config changes
++-- AuditSessionListener.java       # Session tracking
++-- AuditRequestCapture.java        # HTTP request capture
++-- AuditAlertEngine.java           # Rule-based alerts
++-- AnomalyDetector.java            # Anomaly detection
++-- AuditMetricsEngine.java         # Metrics collection
++-- BatchWriteBuffer.java           # Batch writer
++-- ComplianceReportGenerator.java  # Compliance reports
++-- DataMasker.java                 # PII masking
++-- LogRotationService.java         # Log rotation
++-- RequestHolder.java              # Thread-local + IP cache
++-- StartupPhaseManager.java        # Startup grace period
 ```
 
-**Each component is designed to:**
-- Run independently without blocking builds
-- Use minimal memory and CPU
-- Be easily testable and maintainable
+## Compatibility
 
-## Compatibility & Requirements
-
-**Works with:**
-- **Jenkins:** 2.361.4 or later (tested & verified on up to 2.541.3)
+- **Jenkins:** 2.361.4 or later, with `verify` passing against 2.440 and live regression validation completed on 2.541.3
 - **Java:** 11 or later
-- **Operating System:** Linux, macOS, Windows, or any OS that runs Jenkins
-- **Deployment:** Standalone Jenkins, Docker, Kubernetes, cloud-hosted Jenkins
-
-**What it works best with:**
-- Any Jenkins pipeline or freestyle job
-- Any authentication method (LDAP, SSO, native Jenkins, OAuth, etc.)
-- Any Jenkins configuration (single agent or distributed)
+- **Deployment:** Standalone, Docker, Kubernetes, Cloud-managed Jenkins
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+Commercial License – See [LICENSE.txt](LICENSE.txt)
 
----
+## Support
 
-## Need Help?
+- **GitHub:** https://github.com/harryofficial/AuditFlow
+- **Issues:** Report bugs and feature requests on GitHub
 
-- **Found a bug?** Report it on [GitHub Issues](https://github.com/harryofficial/Auditflow-plugin/issues)
-- **Have a feature request?** Open an issue and describe what you need
-- **Source code:** [GitHub Repository](https://github.com/harryofficial/Auditflow-plugin)
+## Version History
 
----
+### 1.1.1
+- Refined Insights to summarize current-day activity while honoring the active filters
+- Kept anomaly detection and the anomaly row disabled while still using thresholds for Insights prioritization
+- Preserved non-visible configuration values across Configure System save cycles
+- Validated config round-trips and log rotation behavior live on Jenkins 2.541.3
 
-## Version
+### 1.1.0
+- Verified plugin build compatibility against Jenkins 2.440
+- Live regression validation completed for credentials, plugin lifecycle events, authentication events, and build outcomes
+- Fixed timestamp reload drift so persisted events keep their original audit time after restart
+- Fixed credential mutation detection on the first post-startup change
+- Fixed plugin manager route handling for modern `/plugin/{name}/...` endpoints
+- Removed runtime anomaly detection work from the audit hot path to keep write latency predictable under load
 
-**1.0.0** – Comprehensive Jenkins audit logging with searchable dashboard, REST API, automatic log rotation, and data masking.
+### 1.0.0
+- Initial public release

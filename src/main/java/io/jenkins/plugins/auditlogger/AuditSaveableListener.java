@@ -7,9 +7,9 @@ import hudson.model.Saveable;
 import hudson.model.User;
 import hudson.model.listeners.SaveableListener;
 import jenkins.model.Jenkins;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import org.kohsuke.stapler.Stapler;
-
-import javax.servlet.http.HttpServletRequest;
 import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Map;
@@ -493,7 +493,7 @@ public class AuditSaveableListener extends SaveableListener {
         try {
             HttpServletRequest req = RequestHolder.get();
             if (req != null) {
-                javax.servlet.http.HttpSession session = req.getSession(false);
+                HttpSession session = req.getSession(false);
                 if (session != null) {
                     Object ctx = session.getAttribute("SPRING_SECURITY_CONTEXT");
                     if (ctx != null) {
@@ -527,7 +527,7 @@ public class AuditSaveableListener extends SaveableListener {
         }
         // 5. Try Stapler request
         try {
-            org.kohsuke.stapler.StaplerRequest req = Stapler.getCurrentRequest();
+            org.kohsuke.stapler.StaplerRequest2 req = Stapler.getCurrentRequest2();
             if (req != null) {
                 String remoteUser = req.getRemoteUser();
                 if (isRealUser(remoteUser)) return remoteUser;

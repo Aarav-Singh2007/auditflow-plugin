@@ -83,9 +83,9 @@ public class AuditItemListener extends ItemListener {
         // 1. Try session-based Spring Security context first — preserves original
         //    logged-in user even when Jenkins impersonates SYSTEM internally
         try {
-            javax.servlet.http.HttpServletRequest req = RequestHolder.get();
+            jakarta.servlet.http.HttpServletRequest req = RequestHolder.get();
             if (req != null) {
-                javax.servlet.http.HttpSession session = req.getSession(false);
+                jakarta.servlet.http.HttpSession session = req.getSession(false);
                 if (session != null) {
                     Object ctx = session.getAttribute("SPRING_SECURITY_CONTEXT");
                     if (ctx != null) {
@@ -106,7 +106,7 @@ public class AuditItemListener extends ItemListener {
         } catch (ReflectiveOperationException | RuntimeException ignored) {}
         // 2. Try Stapler request
         try {
-            org.kohsuke.stapler.StaplerRequest req = Stapler.getCurrentRequest();
+            org.kohsuke.stapler.StaplerRequest2 req = Stapler.getCurrentRequest2();
             if (req != null) {
                 String remoteUser = req.getRemoteUser();
                 if (isRealUser(remoteUser)) return remoteUser;

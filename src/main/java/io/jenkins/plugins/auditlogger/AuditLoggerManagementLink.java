@@ -4,8 +4,8 @@ import hudson.Extension;
 import hudson.model.ManagementLink;
 import hudson.security.Permission;
 import jenkins.model.Jenkins;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.StaplerResponse2;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -64,7 +64,7 @@ public class AuditLoggerManagementLink extends ManagementLink {
         return Jenkins.ADMINISTER;
     }
 
-    public void doApi(StaplerRequest req, StaplerResponse res) throws IOException {
+    public void doApi(StaplerRequest2 req, StaplerResponse2 res) throws IOException {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
 
         try {
@@ -95,7 +95,7 @@ public class AuditLoggerManagementLink extends ManagementLink {
         }
     }
 
-    public void doExportCsv(StaplerRequest req, StaplerResponse res) throws IOException {
+    public void doExportCsv(StaplerRequest2 req, StaplerResponse2 res) throws IOException {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
 
         AuditLoggerConfiguration cfg = AuditLoggerConfiguration.get();
@@ -275,7 +275,7 @@ public class AuditLoggerManagementLink extends ManagementLink {
         return !AuditLogStorage.getInstance().hasEntries();
     }
 
-    public void doExportJson(StaplerRequest req, StaplerResponse res) throws IOException {
+    public void doExportJson(StaplerRequest2 req, StaplerResponse2 res) throws IOException {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
 
         AuditLoggerConfiguration cfg = AuditLoggerConfiguration.get();
@@ -312,7 +312,7 @@ public class AuditLoggerManagementLink extends ManagementLink {
         }
     }
 
-    public void doExportTxt(StaplerRequest req, StaplerResponse res) throws IOException {
+    public void doExportTxt(StaplerRequest2 req, StaplerResponse2 res) throws IOException {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
 
         try {
@@ -794,7 +794,7 @@ public class AuditLoggerManagementLink extends ManagementLink {
             this.pageSize = pageSize;
         }
 
-        static AuditViewRequest fromRequest(StaplerRequest req, ZoneId displayZone) {
+        static AuditViewRequest fromRequest(StaplerRequest2 req, ZoneId displayZone) {
             String searchText = trim(req.getParameter("searchText"));
             String searchColumn = trim(req.getParameter("searchColumn"));
             if (searchColumn == null || searchColumn.isEmpty()) {
@@ -854,7 +854,7 @@ public class AuditLoggerManagementLink extends ManagementLink {
     }
 
     /** API endpoint for anomaly alerts, consumed by the dashboard's risk panel. */
-    public void doAlerts(StaplerRequest req, StaplerResponse res) throws IOException {
+    public void doAlerts(StaplerRequest2 req, StaplerResponse2 res) throws IOException {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
 
         try {
