@@ -1,0 +1,4 @@
+<?jelly escape-by-default='true'?>
+<div>
+    AuditFlow - Lightweight audit log dashboard for Jenkins. Captures authentication, builds, job lifecycle, and configuration changes with filtering, search, and export. Logs stored in $JENKINS_HOME/auditflow-logs/.
+</div>

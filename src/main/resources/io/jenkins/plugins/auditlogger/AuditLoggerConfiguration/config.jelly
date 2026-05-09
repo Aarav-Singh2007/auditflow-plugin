@@ -1,0 +1,168 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+    <!-- AuditFlow Configuration — Simplified grouped layout -->
+    <f:section title="AuditFlow Configuration">
+
+        <!-- ============================== -->
+        <!-- WHAT TO TRACK                  -->
+        <!-- ============================== -->
+        <f:block>
+            <h4 style="margin-top: 15px; margin-bottom: 5px;">What to Track</h4>
+            <div style="margin-left: 20px; font-size: 0.9em; color: var(--text-color-secondary, #666); margin-bottom: 10px;">
+                Uncheck an item to stop capturing and storing that category of audit event.
+            </div>
+            <f:entry title="Authentication (login, logout, failed login, API auth)">
+                <f:checkbox name="enableAuthenticationEvents" checked="${descriptor.isEnableAuthenticationEvents()}"/>
+            </f:entry>
+            <f:entry title="Builds (start, complete, fail, abort, delete)">
+                <f:checkbox name="enableBuildEvents" checked="${descriptor.isEnableBuildEvents()}"/>
+            </f:entry>
+            <f:entry title="Job Changes (create, rename, copy, move, delete, config update)">
+                <f:checkbox name="enableJobConfigEvents" checked="${descriptor.isEnableJobConfigEvents()}"/>
+            </f:entry>
+            <f:entry title="Credentials (create, update, delete, access during builds)">
+                <f:checkbox name="enableCredentialEvents" checked="${descriptor.isEnableCredentialEvents()}"/>
+            </f:entry>
+            <f:entry title="Plugins (install, update, remove, enable, disable)">
+                <f:checkbox name="enablePluginEvents" checked="${descriptor.isEnablePluginEvents()}"/>
+            </f:entry>
+            <f:entry title="System configuration saves (security and global settings)">
+                <f:checkbox name="enableSystemConfigEvents" checked="${descriptor.isEnableSystemConfigEvents()}"/>
+            </f:entry>
+        </f:block>
+
+        <!-- ============================== -->
+        <!-- DASHBOARD DISPLAY              -->
+        <!-- ============================== -->
+        <f:block>
+            <h4 style="margin-top: 15px; margin-bottom: 5px;">Dashboard Display</h4>
+            <div style="margin-left: 20px; font-size: 0.9em; color: var(--text-color-secondary, #666); margin-bottom: 10px;">
+                These options only change what the dashboard shows. They do not affect logging.
+            </div>
+            <f:entry title="Stats counters row">
+                <f:checkbox name="enableDashboardStats" checked="${descriptor.isEnableDashboardStats()}"/>
+            </f:entry>
+            <f:entry title="Risk level badges (Low / Medium / High / Critical)">
+                <f:checkbox name="enableRiskLevels" checked="${descriptor.isEnableRiskLevels()}"/>
+            </f:entry>
+            <f:entry title="Display time zone">
+                <select name="displayTimeZoneId" class="jenkins-select__input" style="min-width: 320px;">
+                    <j:forEach var="timeZoneId" items="${descriptor.availableDisplayTimeZoneIds}">
+                        <j:choose>
+                            <j:when test="${timeZoneId == descriptor.displayTimeZoneId}">
+                                <option value="${timeZoneId}" selected="selected">${timeZoneId}</option>
+                            </j:when>
+                            <j:otherwise>
+                                <option value="${timeZoneId}">${timeZoneId}</option>
+                            </j:otherwise>
+                        </j:choose>
+                    </j:forEach>
+                </select>
+                <div style="margin-left: 20px; font-size: 0.9em; color: var(--text-color-secondary, #666);">
+                    Stored timestamps stay unchanged. This only controls how AuditFlow renders dates in the UI and exports.
+                </div>
+            </f:entry>
+        </f:block>
+
+        <!-- ============================== -->
+        <!-- METRIC CARDS                   -->
+        <!-- ============================== -->
+        <f:block>
+            <h4 style="margin-top: 15px; margin-bottom: 5px;">Metric Cards</h4>
+            <div style="margin-left: 20px; font-size: 0.9em; color: var(--text-color-secondary, #666); margin-bottom: 8px;">Pick which counters show in the stats row (auto-scales to fit).</div>
+            <f:entry title="Total Events">
+                <f:checkbox name="showMetricTotal" checked="${descriptor.isShowMetricTotal()}"/>
+            </f:entry>
+            <f:entry title="Logins">
+                <f:checkbox name="showMetricLogins" checked="${descriptor.isShowMetricLogins()}"/>
+            </f:entry>
+            <f:entry title="Failed Logins">
+                <f:checkbox name="showMetricFailedLogins" checked="${descriptor.isShowMetricFailedLogins()}"/>
+            </f:entry>
+            <f:entry title="Build Events">
+                <f:checkbox name="showMetricBuilds" checked="${descriptor.isShowMetricBuilds()}"/>
+            </f:entry>
+            <f:entry title="Job Events">
+                <f:checkbox name="showMetricJobs" checked="${descriptor.isShowMetricJobs()}"/>
+            </f:entry>
+            <f:entry title="Config Changes">
+                <f:checkbox name="showMetricConfig" checked="${descriptor.isShowMetricConfig()}"/>
+            </f:entry>
+        </f:block>
+
+        <!-- ============================== -->
+        <!-- EXPORT FORMATS                 -->
+        <!-- ============================== -->
+        <f:block>
+            <h4 style="margin-top: 15px; margin-bottom: 5px;">Export</h4>
+            <div style="margin-left: 20px; font-size: 0.9em; color: var(--text-color-secondary, #666); margin-bottom: 8px;">These switches only enable or disable the export/API endpoints.</div>
+            <f:entry title="CSV Export">
+                <f:checkbox name="enableCsvExport" checked="${descriptor.isEnableCsvExport()}"/>
+            </f:entry>
+            <f:entry title="JSON Export">
+                <f:checkbox name="enableJsonExport" checked="${descriptor.isEnableJsonExport()}"/>
+            </f:entry>
+            <f:entry title="REST API endpoint (/auditflow/api)">
+                <f:checkbox name="enableAuditApi" checked="${descriptor.isEnableAuditApi()}"/>
+            </f:entry>
+        </f:block>
+
+        <!-- =========================================== -->
+        <!-- ADVANCED SETTINGS (collapsed by default)    -->
+        <!-- =========================================== -->
+        <f:advanced title="Advanced Settings">
+
+            <!-- Log Retention -->
+            <f:block>
+                <h4 style="margin-top: 15px; margin-bottom: 5px;">Log Retention</h4>
+                <f:entry title="Keep logs for (days, 0 = forever)">
+                    <f:number name="logRetentionDays" value="${descriptor.getLogRetentionDays()}"/>
+                </f:entry>
+                <f:entry title="Max log file size (MB)">
+                    <f:number name="maxLogFileSizeMB" value="${descriptor.getMaxLogFileSizeMB()}"/>
+                </f:entry>
+                <f:entry title="Auto-rotate when size exceeded">
+                    <f:checkbox name="enableLogRotation" checked="${descriptor.isEnableLogRotation()}"/>
+                </f:entry>
+            </f:block>
+
+            <!-- Performance -->
+            <f:block>
+                <h4 style="margin-top: 15px; margin-bottom: 5px;">Performance</h4>
+                <div style="margin-left: 20px; font-size: 0.9em; color: var(--text-color-secondary, #666); margin-bottom: 8px;">Anomaly detection is temporarily disabled to keep writes predictable under load.</div>
+                <f:entry title="Startup grace period (seconds)">
+                    <f:number name="startupGracePeriodSeconds" value="${descriptor.getStartupGracePeriodSeconds()}"/>
+                    <div style="margin-left: 20px; font-size: 0.9em; color: var(--text-color-secondary, #666);">Suppress config-reload noise during startup (5-300)</div>
+                </f:entry>
+                <f:entry title="Batch write size">
+                    <f:number name="batchWriteSize" value="${descriptor.getBatchWriteSize()}"/>
+                </f:entry>
+                <f:entry title="Batch flush interval (seconds)">
+                    <f:number name="batchFlushIntervalSeconds" value="${descriptor.getBatchFlushIntervalSeconds()}"/>
+                </f:entry>
+            </f:block>
+
+            <!-- Privacy -->
+            <f:block>
+                <h4 style="margin-top: 15px; margin-bottom: 5px;">Privacy / Data Masking</h4>
+                <f:entry title="Mask tokens and secrets">
+                    <f:checkbox name="maskTokens" checked="${descriptor.isMaskTokens()}"/>
+                </f:entry>
+                <f:entry title="Mask email addresses">
+                    <f:checkbox name="maskEmailAddresses" checked="${descriptor.isMaskEmailAddresses()}"/>
+                </f:entry>
+                <f:entry title="Mask credit card numbers">
+                    <f:checkbox name="maskCreditCards" checked="${descriptor.isMaskCreditCards()}"/>
+                </f:entry>
+            </f:block>
+
+            <!-- API -->
+            <f:block>
+                <h4 style="margin-top: 15px; margin-bottom: 5px;">API</h4>
+                <div style="margin-left: 20px; font-size: 0.9em; color: var(--text-color-secondary, #666);">Only currently supported runtime options are shown on this page.</div>
+            </f:block>
+
+        </f:advanced>
+
+    </f:section>
+</j:jelly>

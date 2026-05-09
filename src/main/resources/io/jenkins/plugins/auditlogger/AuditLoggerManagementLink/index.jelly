@@ -1,0 +1,835 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:f="/lib/form">
+    <l:layout permission="${app.ADMINISTER}" title="AuditFlow Logs">
+        <l:header>
+            <style>
+                .audit-container { max-width: 100%; padding: 10px; }
+                .audit-table { border-collapse: collapse; width: 100%; margin-top: 15px; font-size: var(--font-size-sm, 13px); }
+                .audit-table th, .audit-table td { border: 1px solid var(--card-border-color, #ddd); padding: 8px 10px; text-align: left; }
+                .audit-table th { background-color: var(--bigtable-header-bg, #f2f2f2); color: var(--bigtable-header-text-color, inherit); font-weight: var(--bigtable-header-font-weight, bold); position: sticky; top: 0; z-index: 1; cursor: pointer; user-select: none; }
+                .audit-table th:hover { background-color: var(--bigtable-header-bg-hover, #e0e0e0); color: var(--bigtable-header-text-color, inherit); }
+                .audit-table tr:nth-child(even) { background-color: var(--even-row-color, #fafafa); }
+                .audit-table tr:hover { background-color: var(--card-background--hover, #f0f0f0); }
+                .audit-table td { color: var(--text-color, inherit); background-color: var(--table-body-background, transparent); }
+
+                .toolbar { background: var(--card-background, #f9f9f9); padding: 12px 15px; border: 1px solid var(--card-border-color, #ddd); border-radius: 6px; margin-bottom: 15px; }
+                .toolbar-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+                .toolbar-row + .toolbar-row { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--card-border-color, #eee); }
+
+                .search-group { display: flex; gap: 0; max-width: 520px; }
+                .search-group select { padding: 6px 8px; border: 1px solid var(--input-border, #ccc); border-right: none; border-radius: 4px 0 0 4px; font-size: 12px; background: var(--input-background, #fff); color: var(--text-color, inherit); min-width: 110px; }
+                .search-group input { padding: 6px 8px; border: 1px solid var(--input-border, #ccc); font-size: 12px; background: var(--input-background, #fff); color: var(--text-color, inherit); width: 200px; outline: none; }
+                .search-group input:focus { border-color: var(--accent-color, #0066cc); }
+                .search-group .search-btn { padding: 6px 12px; border: 1px solid var(--accent-color, #0066cc); border-left: none; border-radius: 0; background: var(--accent-color, #0066cc); color: #fff; cursor: pointer; font-size: 12px; font-weight: bold; }
+                .search-group .search-btn:hover { background: #0052a3; }
+                .search-group .reset-btn { padding: 6px 10px; border: 1px solid var(--text-color-secondary, #999); border-left: none; border-radius: 0 4px 4px 0; background: var(--text-color-secondary, #6c757d); color: #fff; cursor: pointer; font-size: 12px; font-weight: 500; }
+                .search-group .reset-btn:hover { background: #555; }
+
+                .filter-input { padding: 6px 8px; border: 1px solid var(--input-border, #ccc); border-radius: 4px; font-size: 12px; background: var(--input-background, #fff); color: var(--text-color, inherit); }
+                .date-input { padding: 5px 8px; border: 1px solid var(--input-border, #ccc); border-radius: 4px; font-size: 12px; background: var(--input-background, #fff); color: var(--text-color, inherit); }
+
+                .audit-btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; color: white; }
+                .audit-btn:hover { opacity: 0.85; }
+                .btn-refresh { background-color: var(--teal, #17a2b8); }
+
+                /* Export dropdown */
+                .export-wrapper { position: relative; display: inline-block; }
+                .btn-export { background-color: #28a745; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; color: white; }
+                .btn-export:hover { background-color: #218838; }
+                .export-menu { display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: var(--card-background, #fff); border: 1px solid var(--card-border-color, #ccc); border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; min-width: 130px; overflow: hidden; }
+                .export-menu.show { display: block; }
+                .export-menu button { display: block; width: 100%; padding: 8px 14px; border: none; background: none; text-align: left; cursor: pointer; font-size: 12px; color: var(--text-color, #333); }
+                .export-menu button:hover { background: var(--card-background--hover, #f0f0f0); }
+                .export-menu button + button { border-top: 1px solid var(--card-border-color, #eee); }
+
+                /* Severity-colored action badges */
+                .badge { display: inline-block; padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; color: white; white-space: nowrap; }
+                .badge-critical { background-color: #a12d35; }
+                .badge-high { background-color: #b85a10; }
+                .badge-medium { background-color: #2563a8; }
+                .badge-low { background-color: #146b43; }
+                .badge-info { background-color: #5a6268; }
+
+
+                .stats { display: grid; gap: 10px; margin-bottom: 15px; }
+                .stat-box { background: var(--card-background, #fff); border: 1px solid var(--card-border-color, #ddd); padding: 12px; border-radius: 6px; text-align: center; }
+                .stat-number { font-size: 22px; font-weight: bold; color: var(--accent-color, #0066cc); }
+                .stat-label { font-size: 11px; color: var(--text-color-secondary, #666); margin-top: 4px; }
+                .stat-box.stat-danger .stat-number { color: #dc3545; }
+                .stat-box.stat-warning .stat-number { color: #e67e22; }
+
+                /* Anomaly detection row */
+                .anomaly-box { background: var(--card-background, #fff); border: 1px solid var(--card-border-color, #ddd); padding: 12px 16px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid #27ae60; display: flex; align-items: center; gap: 10px; }
+                .anomaly-box.anomaly-alert { border-left-color: #dc3545; background: #fff5f5; }
+                .anomaly-box.anomaly-dismissed { border-left-color: #6c757d; background: var(--card-background, #fff); }
+                .anomaly-box .anomaly-label { font-size: 12px; font-weight: bold; color: var(--text-color-secondary, #666); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+                .anomaly-box .anomaly-status { font-size: 13px; font-weight: 600; color: #27ae60; flex: 1; }
+                .anomaly-box.anomaly-alert .anomaly-status { color: #dc3545; }
+                .anomaly-box.anomaly-dismissed .anomaly-status { color: #6c757d; }
+                .anomaly-sev { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: bold; color: #fff; margin-right: 4px; vertical-align: middle; }
+                .anomaly-sev-critical { background: #a12d35; }
+                .anomaly-sev-high { background: #b85a10; }
+                .anomaly-sev-medium { background: #2563a8; }
+                .btn-investigate { padding: 5px 12px; border: 1px solid #dc3545; border-radius: 4px; background: #dc3545; color: #fff; cursor: pointer; font-size: 12px; font-weight: 600; display: none; white-space: nowrap; }
+                .btn-investigate:hover { background: #b02a37; }
+                .btn-dismiss { padding: 5px 12px; border: 1px solid #6c757d; border-radius: 4px; background: #6c757d; color: #fff; cursor: pointer; font-size: 12px; font-weight: 600; display: none; white-space: nowrap; }
+                .btn-dismiss:hover { background: #555; }
+                .anomaly-box.anomaly-alert .btn-investigate { display: inline-block; }
+                .anomaly-box.anomaly-alert .btn-dismiss { display: inline-block; }
+
+                /* Insights panel */
+                .btn-insights { padding: 6px 14px; border: 1px solid #6f42c1; border-radius: 4px; background: #6f42c1; color: #fff; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap; }
+                .btn-insights:hover { background: #5a32a3; }
+                .insights-panel { background: var(--card-background, #fff); border: 1px solid var(--card-border-color, #ddd); border-radius: 6px; margin-bottom: 15px; padding: 15px; display: none; border-left: 4px solid #6f42c1; position: relative; }
+                .insights-panel.show { display: block; }
+                .insights-panel h3 { margin: 0 0 10px 0; font-size: 14px; color: #6f42c1; }
+                .insights-close { position: absolute; top: 10px; right: 12px; padding: 5px 12px; border: 1px solid #6f42c1; border-radius: 4px; background: #6f42c1; color: #fff; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap; }
+                .insights-close:hover { background: #5a32a3; }
+                .insights-list { list-style: none; padding: 0; margin: 0; }
+                .insights-list li { padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--card-border-color, #eee); display: flex; align-items: center; gap: 8px; }
+                .insights-list li:last-child { border-bottom: none; }
+                .insights-icon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
+                .insights-text { flex: 1; }
+                .insights-count { font-weight: bold; color: var(--accent-color, #0066cc); }
+                .insights-empty { color: var(--text-color-secondary, #666); font-size: 13px; font-style: italic; }
+
+                /* Risk summary panel */
+                .risk-panel { background: var(--card-background, #fff); border: 1px solid var(--card-border-color, #ddd); border-radius: 6px; margin-bottom: 15px; padding: 15px; }
+                .risk-panel h3 { margin: 0 0 10px 0; font-size: 14px; color: var(--text-color, #333); }
+                .risk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+                .risk-card { padding: 10px; border-radius: 4px; border-left: 4px solid #ccc; background: var(--even-row-color, #fafafa); }
+                .risk-card.risk-red { border-left-color: #dc3545; }
+                .risk-card.risk-orange { border-left-color: #e67e22; }
+                .risk-card.risk-green { border-left-color: #27ae60; }
+                .risk-card .risk-title { font-weight: bold; font-size: 12px; margin-bottom: 4px; }
+                .risk-card .risk-value { font-size: 20px; font-weight: bold; }
+                .risk-card .risk-desc { font-size: 11px; color: var(--text-color-secondary, #666); margin-top: 2px; }
+
+                /* Onboarding banner */
+                .onboarding-banner { background: linear-gradient(135deg, #0066cc 0%, #0052a3 100%); color: #fff; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
+                .onboarding-banner h2 { margin: 0 0 8px 0; font-size: 18px; }
+                .onboarding-banner p { margin: 0 0 12px 0; font-size: 13px; opacity: 0.9; }
+                .onboarding-banner a { color: #fff; text-decoration: underline; }
+                .onboarding-banner .dismiss-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+                .onboarding-banner .dismiss-btn:hover { background: rgba(255,255,255,0.3); }
+
+                /* Empty state */
+                .empty-state { text-align: center; padding: 60px 20px; }
+                .empty-state h2 { color: var(--text-color, #333); margin-bottom: 8px; }
+                .empty-state p { max-width: 500px; margin: 0 auto; font-size: 13px; color: var(--text-color-secondary, #666); }
+
+                .ip-cell { font-family: var(--font-family-mono, monospace); font-size: 12px; }
+                .detail-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                .detail-cell:hover { white-space: normal; word-break: break-word; }
+                .target-cell { font-weight: 600; }
+
+                .result-count { font-size: 12px; color: var(--text-color-secondary, #666); }
+                .spacer { flex: 1; }
+
+                .pagination { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 0; }
+                .pagination button { padding: 5px 12px; border: 1px solid var(--input-border, #ccc); border-radius: 4px; background: var(--input-background, #fff); color: var(--text-color, #333); cursor: pointer; font-size: 12px; }
+                .pagination button:hover:not(:disabled) { background: var(--card-background--hover, #e9ecef); }
+                .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+                .pagination .page-info { font-size: 12px; color: var(--text-color-secondary, #666); }
+
+                h1, p { color: var(--text-color, inherit); }
+                label { color: var(--text-color, inherit); cursor: pointer; font-size: 12px; }
+
+                @media (max-width: 900px) {
+                    .stats { grid-template-columns: repeat(2, 1fr) !important; }
+                    .risk-grid { grid-template-columns: 1fr; }
+                    .search-group { max-width: 100%; }
+                }
+            </style>
+        </l:header>
+
+        <l:main-panel>
+            <div class="audit-container">
+                <h1>AuditFlow - Audit Logs</h1>
+                <p class="result-count" id="displayTimeZoneLabel">Audit Dashboard</p>
+
+                <!-- Onboarding banner for first run -->
+                <j:set var="firstRun" value="${it.firstRun}"/>
+                <div class="onboarding-banner" id="onboardingBanner" style="${firstRun ? '' : 'display:none'}">
+                    <h2>Welcome to AuditFlow</h2>
+                    <p>AuditFlow is now tracking authentication, builds, and configuration changes.
+                       Events will appear here as they occur. You can customize what gets tracked in
+                       <a href="${rootURL}/manage/configure">Manage Jenkins &gt; System</a>.</p>
+                    <button type="button" class="dismiss-btn" onclick="dismissOnboarding()">Got it</button>
+                </div>
+
+                <!-- Stats counters (today only, auto-scaling) -->
+                <j:set var="cfg" value="${it.statsEnabled}"/>
+                <j:set var="mTotal" value="${it.showMetricTotal}"/>
+                <j:set var="mLogins" value="${it.showMetricLogins}"/>
+                <j:set var="mFailed" value="${it.showMetricFailedLogins}"/>
+                <j:set var="mBuilds" value="${it.showMetricBuilds}"/>
+                <j:set var="mJobs" value="${it.showMetricJobs}"/>
+                <j:set var="mConfig" value="${it.showMetricConfig}"/>
+                <div class="stats" id="stats" style="${cfg ? '' : 'display:none'}">
+                    <j:if test="${mTotal}">
+                        <div class="stat-box" data-metric="total">
+                            <div class="stat-number" id="stat-total">0</div>
+                            <div class="stat-label">Today's Events</div>
+                        </div>
+                    </j:if>
+                    <j:if test="${mLogins}">
+                        <div class="stat-box" data-metric="logins">
+                            <div class="stat-number" id="stat-logins">0</div>
+                            <div class="stat-label">Logins</div>
+                        </div>
+                    </j:if>
+                    <j:if test="${mFailed}">
+                        <div class="stat-box stat-danger" data-metric="failed">
+                            <div class="stat-number" id="stat-failed">0</div>
+                            <div class="stat-label">Failed Logins</div>
+                        </div>
+                    </j:if>
+                    <j:if test="${mBuilds}">
+                        <div class="stat-box" data-metric="builds">
+                            <div class="stat-number" id="stat-builds">0</div>
+                            <div class="stat-label">Builds</div>
+                        </div>
+                    </j:if>
+                    <j:if test="${mJobs}">
+                        <div class="stat-box" data-metric="jobs">
+                            <div class="stat-number" id="stat-jobs">0</div>
+                            <div class="stat-label">Job Events</div>
+                        </div>
+                    </j:if>
+                    <j:if test="${mConfig}">
+                        <div class="stat-box stat-warning" data-metric="config">
+                            <div class="stat-number" id="stat-config">0</div>
+                            <div class="stat-label">Config Changes</div>
+                        </div>
+                    </j:if>
+                </div>
+
+                <!-- Anomaly Detection Row -->
+                <j:set var="anomalyRowOn" value="${it.anomalyRowEnabled}"/>
+                <div class="anomaly-box" id="anomalyBox" style="${anomalyRowOn ? '' : 'display:none'}">
+                    <div class="anomaly-label">Anomaly Detection:</div>
+                    <div class="anomaly-status" id="anomalyStatus">No anomaly detected</div>
+                    <button type="button" class="btn-investigate" id="btnInvestigate" onclick="investigateAnomalies()">Investigate</button>
+                    <button type="button" class="btn-dismiss" id="btnDismiss" onclick="dismissAnomaly()">Dismiss</button>
+                </div>
+
+                <!-- Insights Panel (hidden by default, toggle via button) -->
+                <div class="insights-panel" id="insightsPanel">
+                    <button type="button" class="insights-close" onclick="closeInsights()" title="Close">&#x2715; Close</button>
+                    <h3>&#x1F4CA; Top Issues Today</h3>
+                    <ul class="insights-list" id="insightsList">
+                        <li class="insights-empty">Loading...</li>
+                    </ul>
+                </div>
+
+                <!-- High Risk Events summary panel -->
+                <j:set var="riskEnabled" value="${it.riskLevelsEnabled}"/>
+                <div class="risk-panel" id="riskPanel" style="${riskEnabled ? '' : 'display:none'}">
+                    <h3>High Risk Events</h3>
+                    <div class="risk-grid">
+                        <div class="risk-card risk-red" id="riskFailedLogins">
+                            <div class="risk-title">Failed Login Spikes</div>
+                            <div class="risk-value" id="riskFailedCount">0</div>
+                            <div class="risk-desc">Failed logins in last 24h</div>
+                        </div>
+                        <div class="risk-card risk-orange" id="riskCredentials">
+                            <div class="risk-title">Credential Access</div>
+                            <div class="risk-value" id="riskCredentialCount">0</div>
+                            <div class="risk-desc">Credential events in last 24h</div>
+                        </div>
+                        <div class="risk-card risk-green" id="riskSuspiciousIps">
+                            <div class="risk-title">Unique Source IPs</div>
+                            <div class="risk-value" id="riskIpCount">0</div>
+                            <div class="risk-desc">Distinct IPs in last 24h</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="toolbar">
+                    <!-- Row 1: Search + Reset + Result count ... Export + Refresh -->
+                    <div class="toolbar-row">
+                        <div class="search-group">
+                            <select id="searchColumn">
+                                <option value="all">All Columns</option>
+                                <option value="user">User</option>
+                                <option value="action">Action</option>
+                                <option value="target">Target</option>
+                                <option value="details">Details</option>
+                                <option value="sourceIp">Source IP</option>
+                                <option value="authMethod">Auth Method</option>
+                            </select>
+                            <input type="text" id="searchText" placeholder="Search logs..." onkeydown="if(event.key==='Enter')applySearch()" />
+                            <button type="button" class="search-btn" onclick="applySearch()">Search</button>
+                            <button type="button" class="reset-btn" onclick="clearAll()">Reset</button>
+                        </div>
+                        <span class="result-count" id="resultCount"></span>
+                        <span class="spacer"></span>
+                        <!-- Export buttons: only show formats enabled in config -->
+                        <j:set var="csvOn" value="${it.csvExportEnabled}"/>
+                        <j:set var="jsonOn" value="${it.jsonExportEnabled}"/>
+                        <j:if test="${csvOn or jsonOn}">
+                            <div class="export-wrapper">
+                                <button type="button" class="btn-export" onclick="toggleExportMenu()">&#x2B07; Export</button>
+                                <div class="export-menu" id="exportMenu">
+                                    <j:if test="${csvOn}">
+                                        <button onclick="exportData('csv')">&#x1F4C4; Export CSV</button>
+                                    </j:if>
+                                    <j:if test="${jsonOn}">
+                                        <button onclick="exportData('json')">&#x1F4CB; Export JSON</button>
+                                    </j:if>
+                                </div>
+                            </div>
+                        </j:if>
+                        <button type="button" class="audit-btn btn-refresh" onclick="loadLogs()">&#x21bb; Refresh</button>
+                        <button type="button" class="btn-insights" onclick="toggleInsights()">&#x1F4CA; Insights</button>
+                    </div>
+                    <!-- Row 2: View mode + Action filter + Date filter -->
+                    <div class="toolbar-row">
+                        <label>
+                            <input type="radio" name="viewMode" value="all" onchange="applySearch()" />
+                            All Logs
+                        </label>
+                        <label>
+                            <input type="radio" name="viewMode" value="user-only" checked="checked" onchange="applySearch()" />
+                            User-Initiated Only
+                        </label>
+                        <select id="filterAction" class="filter-input" onchange="applySearch()">
+                            <option value="">All Actions</option>
+                            <optgroup label="Authentication">
+                                <option value="LOGIN">Login</option>
+                                <option value="SSO_LOGIN">SSO Login</option>
+                                <option value="LOGOUT">Logout</option>
+                                <option value="FAILED_LOGIN">Failed Login</option>
+                                <option value="API_AUTH">API Auth</option>
+                                <option value="SESSION_TERMINATED">Session Terminated</option>
+                            </optgroup>
+                            <optgroup label="Builds">
+                                <option value="BUILD_STARTED">Build Started</option>
+                                <option value="BUILD_COMPLETED">Build Completed</option>
+                                <option value="BUILD_FAILED">Build Failed</option>
+                                <option value="BUILD_ABORTED">Build Aborted</option>
+                                <option value="BUILD_DELETED">Build Deleted</option>
+                                <option value="BUILDS_PURGED">Builds Purged</option>
+                            </optgroup>
+                            <optgroup label="Jobs">
+                                <option value="JOB_CREATED">Job Created</option>
+                                <option value="JOB_DELETED">Job Deleted</option>
+                                <option value="JOB_CONFIG_UPDATED">Job Config Updated</option>
+                                <option value="JOB_RENAMED">Job Renamed</option>
+                                <option value="JOB_COPIED">Job Copied</option>
+                                <option value="JOB_MOVED">Job Moved</option>
+                            </optgroup>
+                            <optgroup label="Credentials">
+                                <option value="CREDENTIAL_ACCESSED">Credential Accessed</option>
+                                <option value="CREDENTIAL_CREATED">Credential Created</option>
+                                <option value="CREDENTIAL_UPDATED">Credential Updated</option>
+                                <option value="CREDENTIAL_DELETED">Credential Deleted</option>
+                            </optgroup>
+                            <optgroup label="Plugins">
+                                <option value="PLUGIN_INSTALLED">Plugin Installed</option>
+                                <option value="PLUGIN_REMOVED">Plugin Removed</option>
+                                <option value="PLUGIN_UPDATED">Plugin Updated</option>
+                                <option value="PLUGIN_ENABLED">Plugin Enabled</option>
+                                <option value="PLUGIN_DISABLED">Plugin Disabled</option>
+                            </optgroup>
+                            <optgroup label="System">
+                                <option value="SYSTEM_RESTART">Restart</option>
+                                <option value="GLOBAL_CONFIG_UPDATED">Global Config</option>
+                                <option value="USER_CONFIG_UPDATED">User Config</option>
+                                <option value="SECURITY_CONFIG_UPDATED">Security Config</option>
+                                <option value="AUTH_STRATEGY_CHANGED">Auth Strategy Changed</option>
+                            </optgroup>
+                        </select>
+                        <span class="spacer"></span>
+                        <select id="pageSize" class="filter-input" onchange="changePageSize()">
+                            <option value="100">100 per page</option>
+                            <option value="500">500 per page</option>
+                            <option value="1000">1000 per page</option>
+                            <option value="0">Show All</option>
+                        </select>
+                        <select id="datePreset" class="filter-input" onchange="applyDatePreset()">
+                            <option value="">Custom Range</option>
+                            <option value="today">Today</option>
+                            <option value="7d">Last 7 Days</option>
+                            <option value="30d">Last 30 Days</option>
+                            <option value="1m">Last 1 Month</option>
+                            <option value="3m">Last 3 Months</option>
+                            <option value="6m">Last 6 Months</option>
+                            <option value="12m">Last 12 Months</option>
+                        </select>
+                        <input type="date" id="dateFrom" class="date-input" onchange="onDateManualChange()" title="From date" />
+                        <span style="color:var(--text-color-secondary,#666);font-size:12px;">to</span>
+                        <input type="date" id="dateTo" class="date-input" onchange="onDateManualChange()" title="To date" />
+                    </div>
+                </div>
+
+                <table class="audit-table" id="logsTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortBy('readable')">Timestamp</th>
+                            <th onclick="sortBy('user')">User</th>
+                            <th onclick="sortBy('action')">Action</th>
+                            <th onclick="sortBy('target')">Target</th>
+                            <th>Details</th>
+                            <th onclick="sortBy('sourceIp')">Source IP</th>
+                            <th>Auth / Trigger</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody">
+                        <tr><td colspan="7">Loading...</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="pagination" id="paginationBar" style="display:none">
+                    <button type="button" onclick="firstPage()" id="btnFirst" disabled="disabled">&#171; First</button>
+                    <button type="button" onclick="prevPage()" id="btnPrev" disabled="disabled">&#8249; Prev</button>
+                    <span class="page-info" id="pageInfo">Page 1 of 1</span>
+                    <button type="button" onclick="nextPage()" id="btnNext" disabled="disabled">Next &#8250;</button>
+                    <button type="button" onclick="lastPage()" id="btnLast" disabled="disabled">Last &#187;</button>
+                </div>
+            </div>
+
+            <script><![CDATA[
+                var allLogs = [];
+                var currentInsights = [];
+                var currentSummary = {};
+                var currentPage = 1;
+                var pageSize = 100;
+                var totalLogs = 0;
+                var totalPages = 1;
+                var sortField = 'timestampMs';
+                var sortAsc = false;
+                var anomalyConfig = {};
+                var displayTimeZone = 'UTC';
+                var displayToday = '';
+
+                function loadLogs(resetPage) {
+                    if (resetPage) {
+                        currentPage = 1;
+                    }
+
+                    var tbody = document.getElementById('tbody');
+                    if (tbody) {
+                        tbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+                    }
+
+                    var params = buildRequestParams(true);
+                    fetch('api?' + params.toString())
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            allLogs = data.logs || [];
+                            currentInsights = data.insights || [];
+                            currentSummary = data.summary || {};
+                            anomalyConfig = data.anomalyConfig || {};
+                            totalLogs = data.total || 0;
+                            totalPages = data.totalPages || 1;
+                            currentPage = data.page || currentPage;
+                            displayTimeZone = data.displayTimeZone || 'UTC';
+                            displayToday = data.displayToday || '';
+
+                            renderStats(currentSummary);
+                            computeRiskPanel(currentSummary);
+                            computeAnomalies(allLogs);
+                            scaleStatsGrid();
+                            renderTable(allLogs);
+                            updateResultCount();
+                            updateTimeZoneLabel();
+                            updatePaginationBar(totalPages);
+                            refreshInsightsIfVisible();
+
+                            if (totalLogs > 0) {
+                                var banner = document.getElementById('onboardingBanner');
+                                if (banner) banner.style.display = 'none';
+                            }
+                        })
+                        .catch(function(err) {
+                            document.getElementById('tbody').innerHTML =
+                                '<tr><td colspan="7">Error loading logs.</td></tr>';
+                        });
+                }
+
+                function buildRequestParams(includePaging) {
+                    var params = new URLSearchParams();
+                    params.set('searchColumn', document.getElementById('searchColumn').value || 'all');
+                    params.set('searchText', document.getElementById('searchText').value || '');
+                    params.set('action', document.getElementById('filterAction').value || '');
+                    params.set('viewMode', document.querySelector('input[name="viewMode"]:checked').value || 'user-only');
+                    params.set('sortField', sortField || 'timestampMs');
+                    params.set('sortDir', sortAsc ? 'asc' : 'desc');
+
+                    var from = document.getElementById('dateFrom').value || '';
+                    var to = document.getElementById('dateTo').value || '';
+                    if (from) params.set('dateFrom', from);
+                    if (to) params.set('dateTo', to);
+
+                    if (includePaging !== false) {
+                        params.set('page', currentPage);
+                        params.set('pageSize', pageSize);
+                    }
+                    return params;
+                }
+
+                function updateResultCount() {
+                    var label = document.getElementById('resultCount');
+                    if (!label) return;
+                    if (totalLogs === 0) {
+                        label.textContent = '0 events';
+                        return;
+                    }
+                    if (pageSize <= 0) {
+                        label.textContent = totalLogs + ' events';
+                        return;
+                    }
+                    label.textContent = 'Showing ' + allLogs.length + ' of ' + totalLogs + ' events';
+                }
+
+                function updateTimeZoneLabel() {
+                    // Generic label - no timezone display needed
+                    var label = document.getElementById('displayTimeZoneLabel');
+                    if (label) {
+                        label.textContent = 'Audit Dashboard';
+                    }
+                }
+
+                function applySearch() {
+                    loadLogs(true);
+                }
+
+                function sortBy(field) {
+                    if (sortField === field) {
+                        sortAsc = !sortAsc;
+                    } else {
+                        sortField = field;
+                        sortAsc = true;
+                    }
+                    loadLogs(true);
+                }
+
+                function updatePaginationBar(totalPagesCount) {
+                    var bar = document.getElementById('paginationBar');
+                    if (pageSize <= 0 || totalPagesCount <= 1 || totalLogs === 0) {
+                        bar.style.display = 'none';
+                        return;
+                    }
+                    bar.style.display = 'flex';
+                    document.getElementById('pageInfo').textContent = 'Page ' + currentPage + ' of ' + totalPagesCount;
+                    document.getElementById('btnFirst').disabled = currentPage <= 1;
+                    document.getElementById('btnPrev').disabled = currentPage <= 1;
+                    document.getElementById('btnNext').disabled = currentPage >= totalPagesCount;
+                    document.getElementById('btnLast').disabled = currentPage >= totalPagesCount;
+                }
+
+                function changePageSize() {
+                    pageSize = parseInt(document.getElementById('pageSize').value, 10) || 0;
+                    currentPage = 1;
+                    loadLogs(false);
+                }
+
+                function firstPage() {
+                    if (currentPage === 1) return;
+                    currentPage = 1;
+                    loadLogs(false);
+                }
+
+                function prevPage() {
+                    if (currentPage <= 1) return;
+                    currentPage--;
+                    loadLogs(false);
+                }
+
+                function nextPage() {
+                    if (currentPage >= totalPages) return;
+                    currentPage++;
+                    loadLogs(false);
+                }
+
+                function lastPage() {
+                    if (currentPage === totalPages) return;
+                    currentPage = totalPages;
+                    loadLogs(false);
+                }
+
+                function renderTable(logs) {
+                    var tbody = document.getElementById('tbody');
+                    tbody.innerHTML = '';
+                    if (!logs || logs.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">' +
+                            '<h2>No audit events found</h2>' +
+                            '<p>Events will appear here as users log in, run builds, and modify configuration. Try adjusting your filters or check back later.</p>' +
+                            '</td></tr>';
+                        return;
+                    }
+
+                    for (var i = 0; i < logs.length; i++) {
+                        var l = logs[i];
+                        var row = document.createElement('tr');
+                        var sevBadge = severityBadgeClass(l.severity, l.action);
+                        row.innerHTML =
+                            '<td style="white-space:nowrap">' + esc(l.readable || '') + '</td>' +
+                            '<td><strong>' + esc(l.user || '') + '</strong></td>' +
+                            '<td><span class="badge ' + sevBadge + '" title="Severity: ' + esc(l.severity || 'INFO') + '">' + esc(formatAction(l.action)) + '</span></td>' +
+                            '<td class="target-cell">' + esc(l.target || '') + '</td>' +
+                            '<td class="detail-cell" title="' + escAttr(l.details || '') + '">' + esc(l.details || '') + '</td>' +
+                            '<td class="ip-cell">' + esc(l.sourceIp || '-') + '</td>' +
+                            '<td>' + esc(l.authMethod || l.triggerType || '-') + '</td>';
+                        tbody.appendChild(row);
+                    }
+                }
+
+
+                function computeRiskPanel(summary) {
+                    var failedLogins = summary.riskFailedCount || 0;
+                    var credentialEvents = summary.riskCredentialCount || 0;
+                    var ipCount = summary.riskIpCount || 0;
+
+                    document.getElementById('riskFailedCount').textContent = failedLogins;
+                    document.getElementById('riskCredentialCount').textContent = credentialEvents;
+                    document.getElementById('riskIpCount').textContent = ipCount;
+
+                    var failedCard = document.getElementById('riskFailedLogins');
+                    failedCard.className = 'risk-card ' + (failedLogins >= 5 ? 'risk-red' : failedLogins >= 2 ? 'risk-orange' : 'risk-green');
+                    var credCard = document.getElementById('riskCredentials');
+                    credCard.className = 'risk-card ' + (credentialEvents >= 10 ? 'risk-red' : credentialEvents >= 3 ? 'risk-orange' : 'risk-green');
+                }
+
+                function renderStats(summary) {
+                    var el;
+                    el = document.getElementById('stat-total'); if (el) el.textContent = summary.todayTotal || 0;
+                    el = document.getElementById('stat-logins'); if (el) el.textContent = summary.todayLogins || 0;
+                    el = document.getElementById('stat-failed'); if (el) el.textContent = summary.todayFailed || 0;
+                    el = document.getElementById('stat-builds'); if (el) el.textContent = summary.todayBuilds || 0;
+                    el = document.getElementById('stat-jobs'); if (el) el.textContent = summary.todayJobs || 0;
+                    el = document.getElementById('stat-config'); if (el) el.textContent = summary.todayConfig || 0;
+                }
+
+                function scaleStatsGrid() {
+                    var statsDiv = document.getElementById('stats');
+                    if (!statsDiv) return;
+                    var boxes = statsDiv.querySelectorAll('.stat-box');
+                    var count = boxes.length;
+                    if (count > 0) {
+                        statsDiv.style.gridTemplateColumns = 'repeat(' + count + ', 1fr)';
+                    }
+                }
+
+                var anomalyActions = []; // actions that triggered anomalies
+                var anomalyDismissedKey = 'auditflow-anomaly-dismissed-' + new Date().toISOString().slice(0, 10);
+                var anomalyDismissed = sessionStorage.getItem(anomalyDismissedKey) === 'true';
+
+                function computeAnomalies(logs) {
+                    anomalyActions = [];
+                }
+
+                function parsePatterns(str) {
+                    if (!str) return [];
+                    return str.split(/[\n,]+/).map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
+                }
+
+                function matchesAnyPattern(name, patterns) {
+                    for (var i = 0; i < patterns.length; i++) {
+                        if (globMatch(name, patterns[i])) return true;
+                    }
+                    return false;
+                }
+
+                function globMatch(str, pattern) {
+                    // Convert glob to regex: * -> .*, ? -> ., rest escaped
+                    var escaped = '';
+                    for (var ci = 0; ci < pattern.length; ci++) {
+                        var ch = pattern.charAt(ci);
+                        if (ch === '*') escaped += '.*';
+                        else if (ch === '?') escaped += '.';
+                        else if ('.+^(){}|[]\\'.indexOf(ch) >= 0) escaped += '\\' + ch;
+                        else escaped += ch;
+                    }
+                    try { return new RegExp('^' + escaped + '$', 'i').test(str); } catch(e) { return false; }
+                }
+
+                function dismissAnomaly() {
+                    anomalyDismissed = true;
+                    sessionStorage.setItem(anomalyDismissedKey, 'true');
+                    var box = document.getElementById('anomalyBox');
+                    var status = document.getElementById('anomalyStatus');
+                    if (box) box.className = 'anomaly-box';
+                    if (status) status.textContent = 'No anomaly detected';
+                    anomalyActions = [];
+                }
+
+                function investigateAnomalies() {
+                    if (anomalyActions.length === 0) return;
+                    var today = displayToday || formatDateForInput(getPresetBaseDate());
+                    document.getElementById('dateFrom').value = today;
+                    document.getElementById('dateTo').value = today;
+                    document.getElementById('datePreset').value = 'today';
+                    document.getElementById('searchText').value = '';
+                    document.getElementById('filterAction').value = '';
+                    document.getElementById('searchColumn').value = 'all';
+                    loadLogs(true);
+                }
+
+                function severityBadgeClass(sev, action) {
+                    if (action === 'USER_CONFIG_UPDATED') return 'badge-info';
+                    if (sev === 'CRITICAL') return 'badge-critical';
+                    if (sev === 'HIGH') return 'badge-high';
+                    if (sev === 'MEDIUM') return 'badge-medium';
+                    if (sev === 'LOW') return 'badge-low';
+                    return 'badge-info';
+                }
+
+                function formatAction(a) {
+                    if (!a) return '';
+                    return a.replace(/_/g, ' ');
+                }
+
+                function clearAll() {
+                    document.getElementById('searchText').value = '';
+                    document.getElementById('searchColumn').value = 'all';
+                    document.getElementById('filterAction').value = '';
+                    document.getElementById('datePreset').value = '';
+                    document.getElementById('dateFrom').value = '';
+                    document.getElementById('dateTo').value = '';
+                    document.getElementById('pageSize').value = '100';
+                    pageSize = 100;
+                    currentPage = 1;
+                    sortField = 'timestampMs';
+                    sortAsc = false;
+                    loadLogs(false);
+                }
+
+                function applyDatePreset() {
+                    var preset = document.getElementById('datePreset').value;
+                    if (!preset) {
+                        document.getElementById('dateFrom').value = '';
+                        document.getElementById('dateTo').value = '';
+                        loadLogs(true);
+                        return;
+                    }
+                    var base = getPresetBaseDate();
+                    var to = formatDateForInput(base);
+                    var fromDate = new Date(base.getTime());
+                    if (preset === 'today') {
+                        fromDate = new Date(base.getTime());
+                    } else if (preset === '7d') {
+                        fromDate.setUTCDate(fromDate.getUTCDate() - 7);
+                    } else if (preset === '30d') {
+                        fromDate.setUTCDate(fromDate.getUTCDate() - 30);
+                    } else {
+                        var months = parseInt(preset);
+                        fromDate.setUTCMonth(fromDate.getUTCMonth() - months);
+                    }
+                    document.getElementById('dateFrom').value = formatDateForInput(fromDate);
+                    document.getElementById('dateTo').value = to;
+                    loadLogs(true);
+                }
+
+                function onDateManualChange() {
+                    document.getElementById('datePreset').value = '';
+                    loadLogs(true);
+                }
+
+                function getPresetBaseDate() {
+                    if (displayToday) {
+                        var parsed = new Date(displayToday + 'T00:00:00Z');
+                        if (!isNaN(parsed.getTime())) {
+                            return parsed;
+                        }
+                    }
+                    var now = new Date();
+                    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+                }
+
+                function formatDateForInput(d) {
+                    var y = d.getUTCFullYear();
+                    var m = String(d.getUTCMonth() + 1).padStart(2, '0');
+                    var day = String(d.getUTCDate()).padStart(2, '0');
+                    return y + '-' + m + '-' + day;
+                }
+
+                function toggleExportMenu() {
+                    var menu = document.getElementById('exportMenu');
+                    if (menu) menu.classList.toggle('show');
+                }
+
+                document.addEventListener('click', function(e) {
+                    var wrapper = document.querySelector('.export-wrapper');
+                    if (wrapper && !wrapper.contains(e.target)) {
+                        var menu = document.getElementById('exportMenu');
+                        if (menu) menu.classList.remove('show');
+                    }
+                });
+
+                function exportData(fmt) {
+                    var menu = document.getElementById('exportMenu');
+                    if (menu) menu.classList.remove('show');
+                    var params = buildRequestParams(false).toString();
+                    if (fmt === 'json') {
+                        window.location.href = 'exportJson?' + params;
+                    } else {
+                        window.location.href = 'exportCsv?' + params;
+                    }
+                }
+
+                function dismissOnboarding() {
+                    var banner = document.getElementById('onboardingBanner');
+                    if (banner) banner.style.display = 'none';
+                    try { localStorage.setItem('auditflow-onboarded', '1'); } catch(e) {}
+                }
+
+                function esc(t) { var d = document.createElement('span'); d.textContent = String(t); return d.innerHTML; }
+                function escAttr(t) { return String(t).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+                function refreshInsightsIfVisible() {
+                    var panel = document.getElementById('insightsPanel');
+                    if (panel && panel.classList.contains('show')) {
+                        renderInsights(currentInsights);
+                    }
+                }
+
+                function toggleInsights() {
+                    var panel = document.getElementById('insightsPanel');
+                    if (!panel) return;
+                    var showing = panel.classList.toggle('show');
+                    if (showing) renderInsights(currentInsights);
+                }
+
+                function closeInsights() {
+                    var panel = document.getElementById('insightsPanel');
+                    if (panel) panel.classList.remove('show');
+                }
+
+                function renderInsights(insights) {
+                    var list = document.getElementById('insightsList');
+                    if (!list) return;
+
+                    if (insights.length === 0) {
+                        list.innerHTML = '<li class="insights-empty">No notable activity recorded today.</li>';
+                        return;
+                    }
+
+                    var html = '';
+                    for (var ii = 0; ii < insights.length; ii++) {
+                        var ins = insights[ii];
+                        var sevClass = ins.severity === 'critical' ? 'badge-critical' : ins.severity === 'high' ? 'badge-high' : ins.severity === 'medium' ? 'badge-medium' : 'badge-low';
+                        html += '<li>'
+                            + '<span class="insights-icon">' + ins.icon + '</span>'
+                            + '<span class="insights-text">' + esc(ins.text) + '</span>'
+                            + '<span class="badge ' + sevClass + '" style="font-size:10px;">' + ins.count + '</span>'
+                            + '</li>';
+                    }
+                    list.innerHTML = html;
+                }
+
+                window.addEventListener('load', function() {
+                    try {
+                        if (localStorage.getItem('auditflow-onboarded') === '1') {
+                            var banner = document.getElementById('onboardingBanner');
+                            if (banner) banner.style.display = 'none';
+                        }
+                    } catch(e) {}
+                    loadLogs(false);
+                });
+            ]]></script>
+        </l:main-panel>
+    </l:layout>
+</j:jelly>
