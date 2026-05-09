@@ -2,7 +2,7 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:f="/lib/form">
     <l:layout permission="${app.ADMINISTER}" title="AuditFlow Logs">
         <l:header>
-            <link rel="stylesheet" type="text/css" href="${rootURL}/plugin/auditflow/css/auditflow-management.css" />
+            <st:adjunct includes="io.jenkins.plugins.auditlogger.AuditLoggerManagementLink.auditflow-management" />
         </l:header>
 
         <l:main-panel>
@@ -251,7 +251,6 @@
                     <button type="button" id="btnLast" disabled="disabled">Last &#187;</button>
                 </div>
             </div>
-            <script src="${rootURL}/plugin/auditflow/js/auditflow-management.js" defer="defer"></script>
         </l:main-panel>
     </l:layout>
 </j:jelly>
