@@ -58,16 +58,7 @@
                 .stat-box.stat-danger .stat-number { color: #dc3545; }
                 .stat-box.stat-warning .stat-number { color: #e67e22; }
 
-                /* Anomaly detection row */
-                .anomaly-box { background: var(--card-background, #fff); border: 1px solid var(--card-border-color, #ddd); padding: 12px 16px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid #27ae60; display: flex; align-items: center; gap: 10px; }
-                .anomaly-box.anomaly-alert { border-left-color: #dc3545; background: #fff5f5; }
-                .anomaly-box.anomaly-dismissed { border-left-color: #6c757d; background: var(--card-background, #fff); }
-                .anomaly-box .anomaly-label { font-size: 12px; font-weight: bold; color: var(--text-color-secondary, #666); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
-                .anomaly-box .anomaly-status { font-size: 13px; font-weight: 600; color: #27ae60; flex: 1; }
-                .anomaly-box.anomaly-alert .anomaly-status { color: #dc3545; }
-                .anomaly-box.anomaly-dismissed .anomaly-status { color: #6c757d; }
-                .anomaly-sev { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: bold; color: #fff; margin-right: 4px; vertical-align: middle; }
-                .anomaly-sev-critical { background: #a12d35; }
+
                 .anomaly-sev-high { background: #b85a10; }
                 .anomaly-sev-medium { background: #2563a8; }
                 .btn-investigate { padding: 5px 12px; border: 1px solid #dc3545; border-radius: 4px; background: #dc3545; color: #fff; cursor: pointer; font-size: 12px; font-weight: 600; display: none; white-space: nowrap; }
@@ -203,15 +194,6 @@
                             <div class="stat-label">Config Changes</div>
                         </div>
                     </j:if>
-                </div>
-
-                <!-- Anomaly Detection Row -->
-                <j:set var="anomalyRowOn" value="${it.anomalyRowEnabled}"/>
-                <div class="anomaly-box" id="anomalyBox" style="${anomalyRowOn ? '' : 'display:none'}">
-                    <div class="anomaly-label">Anomaly Detection:</div>
-                    <div class="anomaly-status" id="anomalyStatus">No anomaly detected</div>
-                    <button type="button" class="btn-investigate" id="btnInvestigate" onclick="investigateAnomalies()">Investigate</button>
-                    <button type="button" class="btn-dismiss" id="btnDismiss" onclick="dismissAnomaly()">Dismiss</button>
                 </div>
 
                 <!-- Insights Panel (hidden by default, toggle via button) -->

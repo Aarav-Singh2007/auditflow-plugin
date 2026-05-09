@@ -129,7 +129,6 @@
             <!-- Performance -->
             <f:block>
                 <h4 style="margin-top: 15px; margin-bottom: 5px;">Performance</h4>
-                <div style="margin-left: 20px; font-size: 0.9em; color: var(--text-color-secondary, #666); margin-bottom: 8px;">Anomaly detection is temporarily disabled to keep writes predictable under load.</div>
                 <f:entry title="Startup grace period (seconds)">
                     <f:number name="startupGracePeriodSeconds" value="${descriptor.getStartupGracePeriodSeconds()}"/>
                     <div style="margin-left: 20px; font-size: 0.9em; color: var(--text-color-secondary, #666);">Suppress config-reload noise during startup (5-300)</div>

@@ -19,12 +19,12 @@
 
     <name>AuditFlow</name>
     <description>Lightweight Jenkins plugin that turns raw audit logs into a clean, searchable dashboard with filtering, severity badges, and export.</description>
-    <url>https://github.com/harryofficial/AuditFlow</url>
+    <url>https://github.com/harryofficial/Auditflow-plugin</url>
 
     <licenses>
         <license>
-            <name>Commercial License</name>
-            <url>https://github.com/harryofficial/AuditFlow/blob/main/LICENSE.txt</url>
+            <name>MIT License</name>
+            <url>https://github.com/harryofficial/Auditflow-plugin/blob/main/LICENSE</url>
         </license>
     </licenses>
 
@@ -37,9 +37,9 @@
     </developers>
 
     <scm>
-        <connection>scm:git:https://github.com/harryofficial/AuditFlow.git</connection>
-        <developerConnection>scm:git:git@github.com:harryofficial/AuditFlow.git</developerConnection>
-        <url>https://github.com/harryofficial/AuditFlow</url>
+        <connection>scm:git:https://github.com/harryofficial/Auditflow-plugin.git</connection>
+        <developerConnection>scm:git:git@github.com:harryofficial/Auditflow-plugin.git</developerConnection>
+        <url>https://github.com/harryofficial/Auditflow-plugin</url>
         <tag>v1.0.0</tag>
     </scm>
 

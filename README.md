@@ -21,7 +21,7 @@ It's built for real-world debugging and compliance auditing—without the comple
 - 🎯 **Works out-of-the-box** – Install, configure once, and get instant visibility
 - 👀 **Built for engineers** – Clean UI, filtering, search—designed for actual use, not just compliance checkboxes
 - 🚀 **Zero performance impact** – Async logging means your builds stay fast
-- 📊 **Visual insights** – Color-coded severity, risk detection, and anomaly alerts
+- 📊 **Visual insights** – Color-coded severity badges for quick problem identification
 
 ---
 
@@ -36,21 +36,6 @@ It's built for real-world debugging and compliance auditing—without the comple
 ### Manage Jenkins – AuditFlow Logs
 ![Manage Jenkins](src/screenshots/08-manage-jenkins.png)
 
-### Configuration – Event Categories
-![Event Categories](src/screenshots/01-config-event-categories.png)
-
-### Configuration – Risk Detection
-![Risk Detection](src/screenshots/02-config-risk-detection.png)
-
-### Configuration – Log Retention & Dashboard
-![Retention & Dashboard](src/screenshots/03-config-retention-dashboard.png)
-
-### Configuration – Export & REST API
-![Export & API](src/screenshots/04-config-export-api.png)
-
-### Configuration – Optimization & Data Masking
-![Optimization & Masking](src/screenshots/05-config-optimization-masking.png)
-
 ---
 
 ## Features
@@ -62,7 +47,6 @@ It's built for real-world debugging and compliance auditing—without the comple
 - **IP Address Tracking** – See where every action came from with automatic IP-to-hostname resolution
 - **Smart Export** – Download logs as CSV, JSON, or TXT with protection against formula injection attacks
 - **REST API** – Query logs programmatically at `/auditflow/api/logs` for integrations
-- **Anomaly Detection** – Alerts on suspicious patterns like off-hours changes or repeated failed logins
 - **Automatic Log Rotation** – Old logs clean up themselves—configurable by size and retention days
 - **Data Masking** – Tokens, passwords, and credit cards are automatically masked in log details
 - **Build-Safe Async** – Everything runs asynchronously in the background with <0.1% performance impact on builds
@@ -288,8 +272,7 @@ Event Capture:
 ├── AuditSessionListener         # Tracks user sessions
 └── AuditRequestCapture          # Captures source IPs and user agents
 
-Smart Features:
-├── AnomalyDetector              # Detects unusual patterns
+Data Processing:
 ├── AuditAlertEngine             # Triggers alerts on risky events
 ├── AuditMetricsEngine           # Collects stats for dashboards
 ├── DataMasker                   # Hides sensitive data
@@ -320,34 +303,18 @@ User Interface:
 
 ## License
 
-This project is licensed under a Commercial License. See [LICENSE.txt](LICENSE.txt) for details.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
 ## Need Help?
 
-- **Found a bug?** Report it on [GitHub Issues](https://github.com/harryofficial/AuditFlow/issues)
+- **Found a bug?** Report it on [GitHub Issues](https://github.com/harryofficial/Auditflow-plugin/issues)
 - **Have a feature request?** Open an issue and describe what you need
-- **Source code:** [GitHub Repository](https://github.com/harryofficial/AuditFlow)
+- **Source code:** [GitHub Repository](https://github.com/harryofficial/Auditflow-plugin)
 
 ---
 
-## What's New
+## Version
 
-### Version 1.0.0 (Current)
-- Initial public release
-- Comprehensive audit logging for all Jenkins events
-- Paginated dashboard with filtering and search
-- REST API for programmatic access
-- Automatic log rotation and retention
-- Data masking for sensitive information
-
-### Version 1.1.0
-- Verified against Jenkins 2.440
-- Fixed timestamp handling after restarts
-- Fixed credential mutation detection
-- Fixed plugin manager routing for modern Jenkins versions
-- Moved anomaly detection off the critical path for better performance
-
-### Version 1.0.0
-- Initial public release
+**1.0.0** – Comprehensive Jenkins audit logging with searchable dashboard, REST API, automatic log rotation, and data masking.
