@@ -47,10 +47,10 @@
 - [x] Define properties: `jenkins.baseline`, `hpi.strictBundledArtifacts`, `ban-deprecated-stapler.skip`, `ban-commons-lang-2.skip` ✓
 
 ### config.jelly Form Styling
-- [x] Use `<f:section>`, `<f:entry>`, `<f:select>` instead of custom HTML ✓
+- [x] Use Jenkins form components for section/entry layout instead of custom HTML ✓
 - [x] Use `<div class="jenkins-section__description">` for descriptions ✓
 - [x] Remove inline `style` attributes from `<h4>` ✓
-- [x] Use `<f:select/>` for timezone dropdown with `doFillDisplayTimeZoneIdItems()` ✓
+- [x] Provide a compact searchable timezone picker backed by the descriptor time zone option APIs ✓
 - [x] No custom styling on form elements ✓
 
 ### API Endpoints
@@ -67,7 +67,7 @@
 - [x] Add `data-sort-field` attributes to sortable header columns ✓
 - [x] Add `data-sort-disable="true"` for non-sortable columns ✓
 - [x] Update dashboard label from "Audit Dashboard" to "Audit Logs" ✓
-- [x] Move insights panel below pagination, not above table ✓
+- [x] Keep insights as an inline panel with Jenkins-native styling; final placement is intentionally at the top per current product direction ✓
 - [x] Use native Jenkins styling (`jenkins-button`, `jenkins-select`) ✓
 - [x] Use `jenkins-hidden` toggle in JavaScript instead of inline display styles ✓
 - [x] Implement `setHidden()` helper function in JavaScript ✓
@@ -136,7 +136,11 @@
   - **Reason**: Custom onboarding banner is functional and styled; low priority UI polish
 
 - [ ] Implement Dialog/Modal for insights panel instead of inline show/hide
-  - **Reason**: Current approach (show below table) is functional; modal complexity not justified for read-only view
+  - **Reason**: Current approach (show inline at the top of the page) is functional; modal complexity not justified for read-only view
+
+### Intentional Deviations From Earlier Reviewer Preferences
+- [x] Time zone selection now uses a compact searchable popup instead of a plain `<f:select/>` because the full zone list is too large for a basic dropdown ✓
+- [x] Insights remain at the top of the management page because that is the current requested product direction, even though an earlier review suggested moving them lower ✓
 
 ### Already Verified as Not Issues
 - [ ] ScriptListener implementation present ✓ (AuditScriptListener.java implements ScriptListener)

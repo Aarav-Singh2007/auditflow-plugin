@@ -109,7 +109,7 @@
 
 ### UI Modernization
 - ✅ ionicons-api symbol icons (no image files)
-- ✅ Jenkins form components (`<f:section>`, `<f:entry>`, `<f:select>`)
+- ✅ Jenkins form components plus a compact searchable timezone picker adjunct
 - ✅ `jenkins-hidden` CSS class (no inline display manipulation)
 - ✅ Native Jenkins styling tokens (dark theme compatible)
 - ✅ Sortable tables with `data-sort-field` attributes
