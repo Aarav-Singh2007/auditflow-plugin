@@ -104,19 +104,16 @@
                     <div class="toolbar-row toolbar-row--primary">
                         <div class="toolbar-search-shell">
                             <div class="search-group search-group--hero">
-                                <span class="search-group__icon" aria-hidden="true">
+                                <button type="button" class="search-group__trigger" id="applySearchButton" aria-label="Search logs">
                                     <l:icon src="symbol-search-outline plugin-ionicons-api" />
-                                </span>
+                                </button>
                                 <input type="search" id="searchText" class="jenkins-input audit-search-input" placeholder="Search logs, users, actions, targets..."/>
-                                <button type="button" class="jenkins-button" id="applySearchButton">Search</button>
-                                <button type="button" class="jenkins-button" id="clearAllButton">Reset</button>
                             </div>
                         </div>
                         <div class="toolbar-primary-side">
                             <div class="toolbar-date-cluster">
-                                <span class="toolbar-cluster-label">Range</span>
                                 <div class="jenkins-select audit-select audit-select--range">
-                                    <select id="datePreset" class="jenkins-select__input">
+                                    <select id="datePreset" class="jenkins-select__input" aria-label="Date range">
                                         <option value="">Custom Range</option>
                                         <option value="7d">Last 7 Days</option>
                                         <option value="month">Current Month</option>
@@ -184,8 +181,8 @@
 
                     <div class="toolbar-row toolbar-row--filters">
                         <div class="toolbar-filter-strip">
-                            <div class="toolbar-filter-chip">
-                                <span class="toolbar-filter-chip__label">Columns</span>
+                            <div class="toolbar-filter-group">
+                                <label class="toolbar-filter-label" for="searchColumn">Columns</label>
                                 <div class="jenkins-select audit-select audit-select--column">
                                     <select id="searchColumn" class="jenkins-select__input">
                                         <option value="all">All Columns</option>
@@ -198,8 +195,8 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="toolbar-filter-chip">
-                                <span class="toolbar-filter-chip__label">Actions</span>
+                            <div class="toolbar-filter-group">
+                                <label class="toolbar-filter-label" for="filterAction">Actions</label>
                                 <div class="jenkins-select audit-select audit-select--action">
                                     <select id="filterAction" class="jenkins-select__input">
                                         <option value="">All Actions</option>
@@ -253,19 +250,23 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="toolbar-filter-chip toolbar-filter-chip--toggle">
-                                <span class="toolbar-filter-chip__label">View</span>
-                                <div class="audit-toggle-group">
+                            <div class="toolbar-filter-group toolbar-filter-group--view">
+                                <span class="toolbar-filter-label">View</span>
+                                <div class="audit-toggle-group" role="group" aria-label="Audit log view mode">
                                     <label class="audit-view-toggle">
                                         <input type="radio" name="viewMode" value="all" checked="checked"/>
                                         <span>All Logs</span>
                                     </label>
                                     <label class="audit-view-toggle">
                                         <input type="radio" name="viewMode" value="user-only"/>
-                                        <span>User-Initiated Only</span>
+                                        <span>User-Initiated</span>
                                     </label>
                                 </div>
                             </div>
+                            <button type="button" class="jenkins-button toolbar-reset-button" id="clearAllButton" title="Reset filters">
+                                <l:icon src="symbol-close-outline plugin-ionicons-api" />
+                                Reset
+                            </button>
                         </div>
                     </div>
                 </div>

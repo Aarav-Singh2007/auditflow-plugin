@@ -618,8 +618,10 @@
 
         var searchText = document.getElementById('searchText');
         if (searchText) {
+            searchText.addEventListener('search', applySearch);
             searchText.addEventListener('keydown', function(event) {
                 if (event.key === 'Enter') {
+                    event.preventDefault();
                     applySearch();
                 }
             });

@@ -5,7 +5,9 @@
     --audit-toolbar-muted: color-mix(in srgb, var(--text-color-secondary) 8%, var(--card-background));
     --audit-toolbar-border: color-mix(in srgb, var(--text-color-secondary) 16%, transparent);
     --audit-toolbar-accent-soft: color-mix(in srgb, var(--link-color) 8%, var(--card-background));
-    --audit-toolbar-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+    --audit-toolbar-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+    --audit-toolbar-control-height: 2.35rem;
+    --audit-toolbar-radius: 14px;
 }
 
 .audit-container h1 {
@@ -15,11 +17,11 @@
 .toolbar {
     display: flex;
     flex-direction: column;
-    gap: 0.9rem;
+    gap: 0.68rem;
     margin-bottom: var(--section-padding);
-    padding: 1rem 1.1rem;
+    padding: 0.74rem 0.86rem;
     border: 1px solid var(--audit-toolbar-border);
-    border-radius: 18px;
+    border-radius: 16px;
     background: linear-gradient(180deg, color-mix(in srgb, var(--audit-toolbar-surface) 92%, white 8%), var(--audit-toolbar-surface));
     box-shadow: var(--audit-toolbar-shadow);
 }
@@ -27,13 +29,14 @@
 .toolbar-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
+    gap: 0.6rem;
     align-items: center;
 }
 
 .toolbar-row--primary {
-    align-items: stretch;
+    align-items: center;
     justify-content: space-between;
+    flex-wrap: nowrap;
 }
 
 .toolbar-row--filters {
@@ -41,50 +44,70 @@
 }
 
 .toolbar-row + .toolbar-row {
-    padding-top: 0.8rem;
+    padding-top: 0.48rem;
     border-top: 1px solid color-mix(in srgb, var(--text-color-secondary) 12%, transparent);
 }
 
 .toolbar-search-shell {
-    flex: 1 1 40rem;
-    min-width: min(100%, 18rem);
+    flex: 1 1 44rem;
+    min-width: min(100%, 21rem);
 }
 
 .toolbar-primary-side {
     display: inline-flex;
-    align-items: stretch;
+    align-items: center;
     justify-content: flex-end;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+    gap: 0.45rem;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    min-width: 0;
 }
 
 .search-group {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.45rem;
     min-width: 0;
 }
 
 .search-group--hero {
     flex-wrap: nowrap;
-    gap: 0.45rem;
-    padding: 0.35rem;
-    border: 1px solid color-mix(in srgb, var(--link-color) 18%, var(--audit-toolbar-border));
-    border-radius: 16px;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--link-color) 6%, var(--card-background)), var(--card-background));
+    gap: 0.2rem;
+    padding: 0.14rem 0.18rem 0.14rem 0.25rem;
+    border: 1px solid color-mix(in srgb, var(--link-color) 14%, var(--audit-toolbar-border));
+    border-radius: var(--audit-toolbar-radius);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--card-background) 98%, white 2%), color-mix(in srgb, var(--audit-toolbar-accent-soft) 12%, var(--card-background)));
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
-.search-group__icon {
+.search-group__trigger {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-left: 0.25rem;
-    color: var(--text-color-secondary);
+    width: 2.1rem;
+    min-width: 2.1rem;
+    height: 2.1rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    box-shadow: none;
+    color: var(--link-color);
+    cursor: pointer;
 }
 
-.search-group__icon .icon-md,
-.search-group__icon svg {
+.search-group__trigger:hover {
+    background: color-mix(in srgb, var(--link-color) 10%, transparent);
+}
+
+.search-group__trigger:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--link-color) 35%, transparent);
+    outline-offset: 2px;
+}
+
+.search-group__trigger .icon-md,
+.search-group__trigger svg {
     width: 1rem;
     height: 1rem;
 }
@@ -94,13 +117,13 @@
 }
 
 .audit-select--column {
-    min-width: 10rem;
-    max-width: 11rem;
+    min-width: 8.75rem;
+    max-width: 9.5rem;
 }
 
 .audit-select--action {
-    min-width: 11.5rem;
-    max-width: 12.5rem;
+    min-width: 9.75rem;
+    max-width: 10.75rem;
 }
 
 .audit-select--compact {
@@ -109,42 +132,47 @@
 }
 
 .audit-select--range {
-    min-width: 10.75rem;
-    max-width: 11.5rem;
+    min-width: 8.9rem;
+    max-width: 9.75rem;
 }
 
 .audit-select--meta {
-    min-width: 8rem;
-    max-width: 8.75rem;
+    min-width: 7.5rem;
+    max-width: 8.25rem;
 }
 
 .audit-search-input {
-    flex: 1 1 16rem;
+    flex: 1 1 28rem;
     min-width: 0;
 }
 
 .search-group--hero .audit-search-input {
-    min-height: 2.75rem;
+    min-height: calc(var(--audit-toolbar-control-height) - 0.2rem);
     border: 0;
     background: transparent;
     box-shadow: none;
-    padding: 0 0.15rem;
-    font-size: 1rem;
+    padding: 0 0.35rem;
+    font-size: 0.95rem;
+    color: var(--text-color);
 }
 
 .search-group--hero .audit-search-input:focus {
     outline: none;
 }
 
+.search-group--hero .audit-search-input::placeholder {
+    color: color-mix(in srgb, var(--text-color-secondary) 92%, white 8%);
+}
+
 .audit-date-input {
-    min-width: 8rem;
+    min-width: 7.25rem;
     width: auto;
 }
 
 .audit-date-range {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.35rem;
     flex-wrap: nowrap;
 }
 
@@ -153,20 +181,19 @@
     align-items: center;
     gap: 0.45rem;
     flex-wrap: wrap;
-    padding: 0.35rem 0.45rem;
-    border: 1px solid var(--audit-toolbar-border);
-    border-radius: 16px;
-    background: var(--audit-toolbar-muted);
-    min-height: 3.45rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    min-height: 0;
 }
 
 .toolbar-cluster-label,
 .table-meta__label,
-.toolbar-filter-chip__label {
+.toolbar-filter-label {
     color: var(--text-color-secondary);
-    font-size: 0.72rem;
+    font-size: 0.66rem;
     font-weight: var(--font-bold-weight);
-    letter-spacing: 0.08em;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
     white-space: nowrap;
 }
@@ -174,8 +201,12 @@
 .audit-toggle-group {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.15rem;
     flex-wrap: nowrap;
+    padding: 0.15rem;
+    border: 1px solid color-mix(in srgb, var(--text-color-secondary) 10%, transparent);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--text-color-secondary) 4%, var(--card-background));
 }
 
 .audit-view-toggle {
@@ -192,11 +223,11 @@
 }
 
 .audit-view-toggle span {
-    min-height: 2.35rem;
-    padding: 0 0.85rem;
-    border-radius: 999px;
+    min-height: calc(var(--audit-toolbar-control-height) - 0.55rem);
+    padding: 0 0.75rem;
+    border-radius: 10px;
     color: var(--text-color-secondary);
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 600;
     transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
 }
@@ -215,99 +246,105 @@
 .toolbar-actions {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.4rem;
     flex-wrap: nowrap;
-    padding: 0.35rem;
-    border: 1px solid var(--audit-toolbar-border);
-    border-radius: 16px;
-    background: var(--audit-toolbar-muted);
-    min-height: 3.45rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    min-height: 0;
 }
 
 .toolbar-filter-strip {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.6rem;
+    gap: 0.45rem;
     align-items: center;
 }
 
-.toolbar-filter-chip {
+.toolbar-filter-group {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.3rem;
     min-width: 0;
-    padding: 0.3rem 0.45rem;
-    border: 1px solid color-mix(in srgb, var(--text-color-secondary) 10%, transparent);
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--text-color-secondary) 6%, var(--card-background));
 }
 
-.toolbar-filter-chip--toggle {
-    padding-right: 0.3rem;
+.toolbar-filter-group--view {
+    margin-left: 0.1rem;
 }
 
 .toolbar .jenkins-button,
 .toolbar .jenkins-select__input,
 .toolbar .jenkins-input,
 .table-meta .jenkins-select__input {
-    min-height: 2.75rem;
+    min-height: var(--audit-toolbar-control-height);
 }
 
-.toolbar-filter-chip .jenkins-select__input,
-.toolbar-date-cluster .jenkins-select__input,
+.toolbar .jenkins-select__input,
 .table-meta .jenkins-select__input {
-    border-radius: 12px;
+    border-radius: 10px;
 }
 
-.toolbar-filter-chip .jenkins-select__input {
-    min-height: 2.35rem;
+.toolbar-filter-group .jenkins-select__input {
+    min-height: calc(var(--audit-toolbar-control-height) - 0.15rem);
 }
 
-.toolbar-actions > .jenkins-button,
-.search-group--hero > .jenkins-button {
+.toolbar-actions > .jenkins-button {
     margin: 0;
     white-space: nowrap;
 }
 
 .toolbar-actions > .jenkins-button {
-    padding-inline: 0.8rem;
+    padding-inline: 0.75rem;
 }
 
 .toolbar-actions > .jenkins-button:not(#toggleInsightsButton) {
     border-color: color-mix(in srgb, var(--text-color-secondary) 14%, transparent);
-    background: color-mix(in srgb, var(--card-background) 78%, white 22%);
+    background: color-mix(in srgb, var(--card-background) 96%, white 4%);
     box-shadow: none;
 }
 
 .toolbar-actions > .jenkins-button:not(#toggleInsightsButton):hover {
-    background: var(--card-background);
+    background: color-mix(in srgb, var(--card-background) 88%, white 12%);
 }
 
 #applySearchButton {
-    border-color: color-mix(in srgb, var(--text-color) 16%, transparent);
-    background: color-mix(in srgb, var(--text-color) 88%, white 12%);
-    color: #fff;
+    min-width: 2.1rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--link-color);
 }
 
 #applySearchButton:hover {
-    background: color-mix(in srgb, var(--text-color) 92%, white 8%);
+    background: color-mix(in srgb, var(--link-color) 10%, transparent);
 }
 
-#clearAllButton {
-    border-color: transparent;
+.toolbar-reset-button {
+    margin: 0;
+    padding-inline: 0.55rem;
+    border: 0;
     background: transparent;
     box-shadow: none;
+    color: var(--text-color-secondary);
 }
 
-#clearAllButton:hover {
+.toolbar-reset-button:hover {
     background: color-mix(in srgb, var(--text-color-secondary) 8%, transparent);
+    color: var(--text-color);
+}
+
+.toolbar-reset-button .audit-icon,
+.toolbar-reset-button svg {
+    margin-right: 0.35rem;
 }
 
 #toggleInsightsButton {
     border-color: color-mix(in srgb, var(--link-color) 28%, transparent);
     background: linear-gradient(180deg, color-mix(in srgb, var(--link-color) 84%, white 16%), var(--link-color));
     color: #fff;
-    box-shadow: 0 10px 24px color-mix(in srgb, var(--link-color) 28%, transparent);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--link-color) 24%, transparent);
 }
 
 #toggleInsightsButton:hover {
@@ -318,15 +355,15 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 0.65rem;
+    gap: 0.85rem;
+    margin-bottom: 0.55rem;
 }
 
 .table-meta__summary,
 .table-meta__controls {
     display: inline-flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.5rem;
 }
 
 .toolbar-actions__label,
@@ -699,54 +736,35 @@
     justify-content: flex-end;
 }
 
-@media (min-width: 821px) and (max-width: 960px) {
-    .toolbar-row--primary {
-        flex-wrap: nowrap;
-    }
-
+@media (min-width: 781px) and (max-width: 1040px) {
     .toolbar-search-shell {
         flex-basis: 0;
-        min-width: 15.5rem;
-    }
-
-    .toolbar-primary-side {
-        flex: 0 1 auto;
-        flex-wrap: nowrap;
-        min-width: 0;
+        min-width: 16rem;
     }
 
     .audit-select--range {
-        min-width: 9.5rem;
-        max-width: 10rem;
+        min-width: 8.4rem;
+        max-width: 9rem;
     }
 
     .toolbar-filter-strip {
         gap: 0.45rem;
     }
 
-    .toolbar-filter-chip {
-        padding: 0.25rem 0.35rem;
-    }
-
     .audit-select--column {
-        min-width: 9.25rem;
-        max-width: 10rem;
+        min-width: 8.4rem;
+        max-width: 8.9rem;
     }
 
     .audit-select--action {
-        min-width: 10.75rem;
-        max-width: 11.5rem;
-    }
-
-    .audit-select--compact {
-        min-width: 9.5rem;
+        min-width: 9.25rem;
         max-width: 10rem;
     }
 
     .toolbar-actions > #refreshLogsButton,
     .toolbar-actions > .jenkins-button[data-dropdown="true"] {
-        min-width: 2.75rem;
-        padding-inline: 0.7rem;
+        min-width: var(--audit-toolbar-control-height);
+        padding-inline: 0.6rem;
         font-size: 0;
     }
 
@@ -756,68 +774,56 @@
     }
 
     .audit-view-toggle span {
-        padding: 0 0.7rem;
+        padding: 0 0.65rem;
     }
 }
 
-@media (max-width: 820px) {
-    .toolbar-primary-side {
-        width: 100%;
-        justify-content: space-between;
-    }
-}
-
-@media (max-width: 960px) {
+@media (max-width: 1040px) {
     .toolbar-primary-side {
         gap: 0.5rem;
     }
 
-    .toolbar-date-cluster {
-        gap: 0.35rem;
-        padding: 0.3rem 0.35rem;
-    }
-
-    .toolbar-actions {
-        gap: 0.3rem;
-        padding: 0.25rem;
-    }
-
-    .toolbar-date-cluster .toolbar-cluster-label {
-        display: none;
+    .toolbar-filter-strip {
+        gap: 0.5rem;
     }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 780px) {
     .toolbar {
-        padding: 1rem;
+        padding: 0.78rem 0.82rem;
     }
 
-    .toolbar-row {
-        align-items: stretch;
-    }
-
-    .search-group {
-        flex-direction: column;
-        align-items: stretch;
+    .toolbar-row--primary {
         flex-wrap: wrap;
+        align-items: stretch;
     }
 
     .toolbar-search-shell,
+    .toolbar-primary-side {
+        width: 100%;
+    }
+
     .toolbar-primary-side,
     .toolbar-date-cluster,
     .toolbar-actions,
-    .toolbar-filter-strip,
-    .toolbar-filter-chip,
     .table-meta,
     .table-meta__controls,
     .table-meta__summary {
         width: 100%;
     }
 
+    .toolbar-primary-side,
+    .toolbar-actions,
+    .toolbar-filter-strip,
+    .toolbar-filter-group,
+    .toolbar-filter-group--view,
+    .audit-date-range {
+        flex-wrap: wrap;
+    }
+
     .audit-select,
     .audit-select--column,
     .audit-select--action,
-    .audit-select--compact,
     .audit-select--range,
     .audit-select--meta,
     .audit-search-input,
@@ -827,14 +833,9 @@
         width: 100%;
     }
 
-    .audit-toggle-group,
-    .toolbar-actions,
-    .toolbar-primary-side {
-        flex-wrap: wrap;
-    }
-
-    .audit-date-range {
-        flex-wrap: wrap;
+    .toolbar-filter-group .jenkins-select,
+    .audit-toggle-group {
+        width: 100%;
     }
 
     .table-meta {
