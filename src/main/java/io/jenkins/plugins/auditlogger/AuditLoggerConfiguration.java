@@ -9,6 +9,7 @@ import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.verb.GET;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -464,7 +465,10 @@ public class AuditLoggerConfiguration extends GlobalConfiguration {
     public String getPopularDisplayTimeZonesJson() {
         return getAvailableDisplayTimeZonesJson();
     }
+
+    @GET
     public ListBoxModel doFillDisplayTimeZoneIdItems() {
+        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
         ListBoxModel items = new ListBoxModel();
         String selectedTimeZone = getDisplayTimeZoneId();
         for (String timeZoneId : AVAILABLE_DISPLAY_TIME_ZONES) {

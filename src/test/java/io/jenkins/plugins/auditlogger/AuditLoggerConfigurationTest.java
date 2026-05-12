@@ -1,14 +1,19 @@
 package io.jenkins.plugins.auditlogger;
 
 import hudson.util.ListBoxModel;
+import jenkins.model.Jenkins;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
+import org.htmlunit.FailingHttpStatusCodeException;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.MockAuthorizationStrategy;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 import org.junit.jupiter.api.Test;
+import org.kohsuke.stapler.verb.GET;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @WithJenkins
@@ -67,5 +72,29 @@ class AuditLoggerConfigurationTest {
         JSONObject utc = options.getJSONObject(3);
         assertEquals("UTC", utc.getString("id"));
         assertFalse(utc.getString("offset").isBlank());
+    }
+
+    @Test
+    void displayTimeZoneItemsEndpointIsAnnotatedGet() throws Exception {
+        assertTrue(AuditLoggerConfiguration.class
+                .getMethod("doFillDisplayTimeZoneIdItems")
+                .isAnnotationPresent(GET.class));
+    }
+
+    @Test
+    void displayTimeZoneItemsEndpointRequiresAdminPermission(JenkinsRule j) {
+        j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
+        j.jenkins.setAuthorizationStrategy(new MockAuthorizationStrategy()
+                .grant(Jenkins.READ)
+                .everywhere()
+                .toEveryone());
+
+        JenkinsRule.WebClient webClient = j.createWebClient();
+        FailingHttpStatusCodeException failure = assertThrows(FailingHttpStatusCodeException.class,
+                () -> webClient.goTo(
+                        "descriptorByName/io.jenkins.plugins.auditlogger.AuditLoggerConfiguration/fillDisplayTimeZoneIdItems",
+                        "application/json"));
+
+        assertEquals(403, failure.getStatusCode());
     }
 }
