@@ -49,12 +49,12 @@ class AuditScriptListenerTest {
         String response = page.getWebResponse().getContentAsString(StandardCharsets.UTF_8);
 
         List<AuditLogEntry> entries = AuditLogStorage.getInstance().filterEntries(
-                null, "SCRIPT_CONSOLE_ACCESS", startTime, null);
+            null, AuditScriptListener.SCRIPT_CONSOLE_ACCESS_ACTION, startTime, null);
         AuditLogEntry latest = entries.get(entries.size() - 1);
 
         assertTrue(response.contains("listener path"));
         assertFalse(entries.isEmpty());
-        assertEquals("SCRIPT_CONSOLE_ACCESS", latest.getAction());
+        assertEquals(AuditScriptListener.SCRIPT_CONSOLE_ACCESS_ACTION, latest.getAction());
         assertEquals("ScriptConsole", latest.getTarget());
         assertTrue(latest.getDetails().contains("println('listener path')"));
         assertTrue(latest.getDetails().contains("hudson.util.RemotingDiagnostics"));

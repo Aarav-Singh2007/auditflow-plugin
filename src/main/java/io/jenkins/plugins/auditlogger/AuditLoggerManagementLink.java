@@ -199,10 +199,6 @@ public class AuditLoggerManagementLink extends ManagementLink {
         }
     }
 
-    public List<AuditLogEntry> getEntries() {
-        return AuditLogStorage.getInstance().getAllEntries();
-    }
-
     public String getDisplayTimeZoneId() {
         return resolveDisplayZone(AuditLoggerConfiguration.get()).getId();
     }
@@ -916,6 +912,7 @@ public class AuditLoggerManagementLink extends ManagementLink {
     }
 
     /** API endpoint for anomaly alerts, consumed by the dashboard's risk panel. */
+    @GET
     public void doAlerts(StaplerRequest2 req, StaplerResponse2 res) throws IOException {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
 

@@ -239,6 +239,7 @@
                                         </optgroup>
                                         <optgroup label="System">
                                             <option value="SYSTEM_RESTART">Restart</option>
+                                            <option value="INIT_SCRIPT_EXECUTED">Init Script</option>
                                             <option value="SCRIPT_CONSOLE_ACCESS">Script Console Access</option>
                                             <option value="SCRIPT_APPROVED">Script Approved</option>
                                             <option value="UNSAFE_SCRIPT_BLOCKED">Unsafe Script Blocked</option>
@@ -265,7 +266,7 @@
                             </div>
                             <button type="button" class="jenkins-button toolbar-reset-button" id="clearAllButton" title="Reset filters">
                                 <l:icon src="symbol-close-outline plugin-ionicons-api" />
-                                Reset
+                                Reset Filters
                             </button>
                         </div>
                     </div>

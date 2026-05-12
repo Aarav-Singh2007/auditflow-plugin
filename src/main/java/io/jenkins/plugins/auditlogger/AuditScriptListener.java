@@ -13,6 +13,8 @@ import jenkins.util.ScriptListener;
 @Extension
 public class AuditScriptListener implements ScriptListener {
     private static final Logger LOGGER = Logger.getLogger(AuditScriptListener.class.getName());
+    static final String SCRIPT_CONSOLE_ACCESS_ACTION = "SCRIPT_CONSOLE_ACCESS";
+    static final String INIT_SCRIPT_EXECUTED_ACTION = "INIT_SCRIPT_EXECUTED";
 
     @Override
     public void onScriptExecution(String script, Binding binding, Object feature, Object context,
@@ -26,9 +28,13 @@ public class AuditScriptListener implements ScriptListener {
             String username = resolveCurrentUser(user);
             if (username == null) username = "SYSTEM";
 
-            String target = resolveTarget(feature);
+            String action = resolveAction(feature, context);
+            boolean initScriptExecution = INIT_SCRIPT_EXECUTED_ACTION.equals(action);
+            String target = resolveTarget(feature, action);
+            String description = initScriptExecution ? "Init script execution" : "Script execution";
             String details = String.format(
-                    "Script execution: %s | Feature: %s | Context: %s | Correlation: %s | User: %s",
+                    "%s: %s | Feature: %s | Context: %s | Correlation: %s | User: %s",
+                    description,
                     preview(script),
                     describeObject(feature),
                     describeObject(context),
@@ -36,12 +42,12 @@ public class AuditScriptListener implements ScriptListener {
                     username
             );
 
-            AuditLogEntry entry = new AuditLogEntry(username, "SCRIPT_CONSOLE_ACCESS", target, details);
-            entry.setSeverity("CRITICAL");
+            AuditLogEntry entry = new AuditLogEntry(username, action, target, details);
+            entry.setSeverity(initScriptExecution ? "LOW" : "CRITICAL");
             AuditLogStorage.getInstance().addEntry(entry);
 
-            LOGGER.log(Level.INFO, "SCRIPT_CONSOLE_ACCESS: target={0}, feature={1}, user={2}",
-                    new Object[]{target, describeObject(feature), username});
+            LOGGER.log(Level.INFO, "{0}: target={1}, feature={2}, user={3}",
+                    new Object[]{action, target, describeObject(feature), username});
         } catch (Exception e) {
             LOGGER.log(Level.FINE, "Error recording script execution", e);
         }
@@ -52,7 +58,14 @@ public class AuditScriptListener implements ScriptListener {
         // The execution callback records a single audit event per script run.
     }
 
-    private static String resolveTarget(Object feature) {
+    static String resolveAction(Object feature, Object context) {
+        return isInitScriptExecution(feature, context) ? INIT_SCRIPT_EXECUTED_ACTION : SCRIPT_CONSOLE_ACCESS_ACTION;
+    }
+
+    static String resolveTarget(Object feature, String action) {
+        if (INIT_SCRIPT_EXECUTED_ACTION.equals(action)) {
+            return "InitScript";
+        }
         String featureName = describeObject(feature);
         if (featureName.contains("RemotingDiagnostics")) {
             return "ScriptConsole";
@@ -61,6 +74,16 @@ public class AuditScriptListener implements ScriptListener {
             return "GroovyCLI";
         }
         return "GroovyExecution";
+    }
+
+    static boolean isInitScriptExecution(Object feature, Object context) {
+        String featureName = describeObject(feature);
+        if (featureName.contains("GroovyHookScript")) {
+            return true;
+        }
+
+        String contextName = describeObject(context);
+        return contextName.contains("/init.groovy.d/") || contextName.contains("\\init.groovy.d\\");
     }
 
     private static String resolveCurrentUser(User user) {
