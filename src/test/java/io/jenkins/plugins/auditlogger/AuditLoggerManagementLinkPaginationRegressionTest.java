@@ -70,6 +70,16 @@ class AuditLoggerManagementLinkPaginationRegressionTest {
         assertEquals("AuditFlow - v1.0.0", link.getPageHeading());
     }
 
+    @Test
+    void onboardingStorageKeyIsScopedToTheCurrentUserId() {
+        assertEquals("auditflow-onboarded-v1.0.0",
+            AuditLoggerManagementLink.buildOnboardingStorageKey(null, "v1.0.0"));
+        assertEquals("auditflow-onboarded-v1.0.0",
+            AuditLoggerManagementLink.buildOnboardingStorageKey("   ", "v1.0.0"));
+        assertEquals("auditflow-onboarded-v1.0.1-regression-admin",
+            AuditLoggerManagementLink.buildOnboardingStorageKey(" regression-admin ", "v1.0.1"));
+    }
+
     private static AuditLogEntry entry(String user, String action, long timestamp) {
         return new AuditLogEntry(user, action, "jenkins", "management link regression", timestamp);
     }

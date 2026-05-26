@@ -10,7 +10,8 @@
                   data-default-view-mode="${it.defaultViewMode}"
                   data-default-date-preset="${it.defaultDatePreset}"
                   data-default-date-from="${it.defaultDateFrom}"
-                  data-default-date-to="${it.defaultDateTo}">
+                  data-default-date-to="${it.defaultDateTo}"
+                  data-onboarding-storage-key="${it.onboardingStorageKey}">
                                 <template id="auditflow-icons">
                                         <span data-auditflow-icon="warning"><l:icon src="symbol-warning-outline plugin-ionicons-api" /></span>
                                         <span data-auditflow-icon="alert"><l:icon src="symbol-alert-circle-outline plugin-ionicons-api" /></span>
@@ -25,8 +26,7 @@
                                 </template>
                 <h1>${it.pageHeading}</h1>
 
-                <j:set var="firstRun" value="${it.firstRun}"/>
-                <div class="${firstRun ? 'onboarding-banner' : 'onboarding-banner jenkins-hidden'}" id="onboardingBanner">
+                <div class="onboarding-banner" id="onboardingBanner">
                     <h2>Welcome to AuditFlow</h2>
                     <p>
                         AuditFlow is now tracking authentication, builds, and configuration changes.

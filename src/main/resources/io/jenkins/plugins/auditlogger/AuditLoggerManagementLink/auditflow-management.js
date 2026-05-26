@@ -15,6 +15,7 @@
     var defaultDatePreset = '';
     var defaultDateFrom = '';
     var defaultDateTo = '';
+    var onboardingStorageKey = 'auditflow-onboarded';
     var anomalyActions = [];
     var anomalyDismissedKey = 'auditflow-anomaly-dismissed-' + new Date().toISOString().slice(0, 10);
     var anomalyDismissed = sessionStorage.getItem(anomalyDismissedKey) === 'true';
@@ -42,6 +43,7 @@
         defaultDatePreset = container.dataset.defaultDatePreset || '';
         defaultDateFrom = container.dataset.defaultDateFrom || '';
         defaultDateTo = container.dataset.defaultDateTo || '';
+        onboardingStorageKey = container.dataset.onboardingStorageKey || 'auditflow-onboarded';
     }
 
     function applyConfiguredDefaults() {
@@ -130,11 +132,6 @@
                 updateTimeZoneLabel();
                 updatePaginationBar(totalPages);
                 refreshInsightsIfVisible();
-
-                if (totalLogs > 0) {
-                    var banner = document.getElementById('onboardingBanner');
-                    setHidden(banner, true);
-                }
             })
             .catch(function() {
                 var tbodyEl = document.getElementById('tbody');
@@ -512,9 +509,17 @@
         var banner = document.getElementById('onboardingBanner');
         setHidden(banner, true);
         try {
-            localStorage.setItem('auditflow-onboarded', '1');
+            localStorage.setItem(onboardingStorageKey, '1');
         } catch (ignored) {
             // Ignore localStorage availability issues.
+        }
+    }
+
+    function isOnboardingDismissed() {
+        try {
+            return localStorage.getItem(onboardingStorageKey) === '1';
+        } catch (ignored) {
+            return false;
         }
     }
 
@@ -761,12 +766,8 @@
         loadUiDefaults();
         applyConfiguredDefaults();
         bindUiHandlers();
-        try {
-            if (localStorage.getItem('auditflow-onboarded') === '1') {
-                setHidden(document.getElementById('onboardingBanner'), true);
-            }
-        } catch (ignored) {
-            // Ignore localStorage availability issues.
+        if (isOnboardingDismissed()) {
+            setHidden(document.getElementById('onboardingBanner'), true);
         }
         loadLogs(false);
     });

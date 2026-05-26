@@ -18,8 +18,11 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.logging.Logger;
 
 /**
@@ -30,6 +33,21 @@ import java.util.logging.Logger;
 public class AuditLoggerConfiguration extends GlobalConfiguration {
     private static final Logger LOGGER = Logger.getLogger(AuditLoggerConfiguration.class.getName());
     private static final String DEFAULT_DISPLAY_TIME_ZONE = "UTC";
+        private static final Set<String> UTC_EQUIVALENT_TIME_ZONES = Set.of(
+            "Etc/GMT",
+            "Etc/UCT",
+            "Etc/UTC",
+            "GMT",
+            "UCT",
+            "UTC",
+            "Universal",
+            "Zulu");
+        private static final Map<String, String> DISPLAY_TIME_ZONE_ALIASES = Map.of(
+            "Asia/Kolkata", "India Standard Time",
+            "UTC", "Coordinated Universal Time");
+        private static final Map<String, String> DISPLAY_TIME_ZONE_SEARCH_ALIASES = Map.of(
+            "Asia/Kolkata", "Chennai Kolkata Mumbai New Delhi India Standard Time IST",
+            "UTC", "Coordinated Universal Time GMT Zulu");
     private static final List<String> AVAILABLE_DISPLAY_TIME_ZONES = buildAvailableDisplayTimeZoneIds();
 
     // Event Categories
@@ -110,7 +128,7 @@ public class AuditLoggerConfiguration extends GlobalConfiguration {
     private boolean enableDashboardMetrics = false;
     private boolean enableDashboardStats = true;
     private boolean enableAnomalyRow = false;
-    private String displayTimeZoneId = "UTC";
+    private String displayTimeZoneId = canonicalizeTimeZoneId(ZoneId.systemDefault().getId());
     private boolean showMetricTotal = true;
     private boolean showMetricLogins = true;
     private boolean showMetricFailedLogins = true;
@@ -198,13 +216,15 @@ public class AuditLoggerConfiguration extends GlobalConfiguration {
     }
 
     private static List<String> buildAvailableDisplayTimeZoneIds() {
-        String systemTimeZoneId = ZoneId.systemDefault().getId();
-        List<String> availableTimeZones = new ArrayList<>(ZoneId.getAvailableZoneIds());
-        availableTimeZones.sort(String::compareTo);
+        String systemTimeZoneId = canonicalizeTimeZoneId(ZoneId.systemDefault().getId());
+        Set<String> availableTimeZones = new TreeSet<>();
+        for (String zoneId : ZoneId.getAvailableZoneIds()) {
+            availableTimeZones.add(canonicalizeTimeZoneId(zoneId));
+        }
         availableTimeZones.remove(systemTimeZoneId);
         availableTimeZones.remove(DEFAULT_DISPLAY_TIME_ZONE);
 
-        List<String> orderedTimeZones = new ArrayList<>();
+        Set<String> orderedTimeZones = new LinkedHashSet<>();
         orderedTimeZones.add(systemTimeZoneId);
         if (!DEFAULT_DISPLAY_TIME_ZONE.equals(systemTimeZoneId)) {
             orderedTimeZones.add(DEFAULT_DISPLAY_TIME_ZONE);
@@ -213,14 +233,26 @@ public class AuditLoggerConfiguration extends GlobalConfiguration {
         return List.copyOf(orderedTimeZones);
     }
 
-    private static String sanitizeTimeZoneId(String value) {
+    static String canonicalizeTimeZoneId(String value) {
         if (value == null || value.trim().isEmpty()) {
             return DEFAULT_DISPLAY_TIME_ZONE;
         }
 
         String candidate = value.trim();
+        if (UTC_EQUIVALENT_TIME_ZONES.contains(candidate)) {
+            return DEFAULT_DISPLAY_TIME_ZONE;
+        }
+
+        return ZoneId.of(candidate).getId();
+    }
+
+    private static String sanitizeTimeZoneId(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return DEFAULT_DISPLAY_TIME_ZONE;
+        }
+
         try {
-            String normalized = ZoneId.of(candidate).getId();
+            String normalized = canonicalizeTimeZoneId(value);
             return AVAILABLE_DISPLAY_TIME_ZONES.contains(normalized)
                     ? normalized
                     : DEFAULT_DISPLAY_TIME_ZONE;
@@ -519,10 +551,24 @@ public class AuditLoggerConfiguration extends GlobalConfiguration {
 
     private static String toDisplayTimeZoneLabel(String timeZoneId) {
         String sanitized = sanitizeTimeZoneId(timeZoneId);
-        if (sanitized.equals(ZoneId.systemDefault().getId())) {
-            return "System Default (" + sanitized + ")";
+        String alias = DISPLAY_TIME_ZONE_ALIASES.get(sanitized);
+        String label = alias != null ? alias + " (" + sanitized + ")" : sanitized;
+        if (sanitized.equals(canonicalizeTimeZoneId(ZoneId.systemDefault().getId()))) {
+            return "System Default - " + label;
         }
-        return sanitized;
+        return label;
+    }
+
+    private static String toDisplayTimeZoneSearchText(String timeZoneId) {
+        String sanitized = sanitizeTimeZoneId(timeZoneId);
+        String alias = DISPLAY_TIME_ZONE_ALIASES.getOrDefault(sanitized, "");
+        String extraAliases = DISPLAY_TIME_ZONE_SEARCH_ALIASES.getOrDefault(sanitized, "");
+        return String.join(" ",
+                sanitized,
+                toDisplayTimeZoneLabel(sanitized),
+                alias,
+                extraAliases,
+                toDisplayTimeZoneOffset(sanitized)).trim();
     }
 
     private static List<Map<String, String>> toDisplayTimeZoneOptions(List<String> zoneIds) {
@@ -531,8 +577,9 @@ public class AuditLoggerConfiguration extends GlobalConfiguration {
             Map<String, String> option = new LinkedHashMap<>();
             String sanitized = sanitizeTimeZoneId(zoneId);
             option.put("id", sanitized);
-            option.put("label", sanitized);
+            option.put("label", toDisplayTimeZoneLabel(sanitized));
             option.put("offset", toDisplayTimeZoneOffset(sanitized));
+            option.put("searchText", toDisplayTimeZoneSearchText(sanitized));
             options.add(option);
         }
         return options;

@@ -2,6 +2,7 @@ package io.jenkins.plugins.auditlogger;
 
 import hudson.Extension;
 import hudson.model.ManagementLink;
+import hudson.model.User;
 import hudson.security.Permission;
 import jenkins.model.Jenkins;
 import org.kohsuke.stapler.StaplerRequest2;
@@ -308,9 +309,20 @@ public class AuditLoggerManagementLink extends ManagementLink {
         return c == null || c.isShowMetricConfig();
     }
 
-    /** Check if this is the first time the plugin has been opened (no logs yet). */
-    public boolean getFirstRun() {
-        return !AuditLogStorage.getInstance().hasEntries();
+    public String getOnboardingStorageKey() {
+        User currentUser = User.current();
+        return buildOnboardingStorageKey(currentUser != null ? currentUser.getId() : null, getPluginVersion());
+    }
+
+    static String buildOnboardingStorageKey(String userId, String pluginVersion) {
+        String normalizedVersion = pluginVersion == null || pluginVersion.trim().isEmpty()
+                ? "current"
+                : pluginVersion.trim();
+        String baseKey = "auditflow-onboarded-" + normalizedVersion;
+        if (userId == null || userId.trim().isEmpty()) {
+            return baseKey;
+        }
+        return baseKey + "-" + userId.trim();
     }
 
     @GET

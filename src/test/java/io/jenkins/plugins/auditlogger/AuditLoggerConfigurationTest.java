@@ -22,6 +22,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AuditLoggerConfigurationTest {
 
     @Test
+    void freshConfigurationDefaultsToSystemTimezone(JenkinsRule j) {
+        AuditLoggerConfiguration configuration = AuditLoggerConfiguration.get();
+
+        assertEquals(AuditLoggerConfiguration.canonicalizeTimeZoneId(ZoneId.systemDefault().getId()),
+            configuration.getDisplayTimeZoneId());
+    }
+
+    @Test
     void settersClampValuesAndSanitizeDisplayTimezone(JenkinsRule j) {
         AuditLoggerConfiguration configuration = AuditLoggerConfiguration.get();
 
@@ -76,11 +84,17 @@ class AuditLoggerConfigurationTest {
 
         JSONObject utc = findOption(options, "UTC");
         assertEquals("UTC", utc.getString("id"));
+        assertTrue(utc.getString("label").contains("UTC"));
         assertFalse(utc.getString("offset").isBlank());
 
         JSONObject berlin = findOption(options, "Europe/Berlin");
         assertEquals("Europe/Berlin", berlin.getString("id"));
         assertEquals("Europe/Berlin", berlin.getString("label"));
+
+        JSONObject kolkata = findOption(options, "Asia/Kolkata");
+        assertTrue(kolkata.getString("label").contains("India Standard Time"));
+        assertTrue(kolkata.getString("searchText").contains("Chennai"));
+        assertTrue(kolkata.getString("searchText").contains("India Standard Time"));
     }
 
     @Test
