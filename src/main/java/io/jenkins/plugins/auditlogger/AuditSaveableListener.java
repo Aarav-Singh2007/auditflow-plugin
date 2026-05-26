@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.kohsuke.stapler.Stapler;
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -27,6 +28,9 @@ public class AuditSaveableListener extends SaveableListener {
     private static final Logger LOGGER = Logger.getLogger(AuditSaveableListener.class.getName());
     private static final String SYSTEM_CREDENTIALS_PROVIDER =
             "com.cloudbees.plugins.credentials.SystemCredentialsProvider";
+    private static final Set<String> USER_THEME_SAVEABLE_CLASS_NAMES = Set.of(
+            "io.jenkins.plugins.thememanager.ThemeUserProperty"
+    );
 
     /** Cache of known credential IDs per store class name, for detecting create/delete. */
     private static final Map<String, Set<String>> credentialCache = new ConcurrentHashMap<>();
@@ -97,6 +101,13 @@ public class AuditSaveableListener extends SaveableListener {
                 objectType = "User";
             } else {
                 objectName = objectType;
+            }
+
+            String requestUri = currentRequestUri();
+            Set<String> requestParameterNames = currentRequestParameterNames();
+            if (shouldSuppressThemeUserPreferenceLog(o.getClass().getName(), isUser, requestUri, requestParameterNames)) {
+                LOGGER.log(Level.FINE, "Suppressing user-scoped theme preference save: {0}", objectName);
+                return;
             }
 
             if (StartupPhaseManager.wasRecentlyLogged(objectName)) {
@@ -556,5 +567,76 @@ public class AuditSaveableListener extends SaveableListener {
                 && !"SYSTEM".equalsIgnoreCase(name)
                 && !"anonymous".equalsIgnoreCase(name)
                 && !"anonymousUser".equals(name);
+    }
+
+    static boolean shouldSuppressThemeUserPreferenceLog(String className,
+                                                        boolean isUserSave,
+                                                        String requestUri,
+                                                        Set<String> parameterNames) {
+        if (className == null || className.isEmpty()) {
+            return false;
+        }
+
+        if (USER_THEME_SAVEABLE_CLASS_NAMES.contains(className)) {
+            return true;
+        }
+
+        if (!isUserSave) {
+            return false;
+        }
+
+        String normalizedUri = requestUri == null ? "" : requestUri.toLowerCase(java.util.Locale.ENGLISH);
+        if (normalizedUri.startsWith("/theme/") || normalizedUri.contains("/theme/")) {
+            return true;
+        }
+
+        for (String parameterName : parameterNames) {
+            String normalizedName = parameterName.toLowerCase(java.util.Locale.ENGLISH);
+            if (normalizedName.contains("theme") || normalizedName.contains("appearance")) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static String currentRequestUri() {
+        try {
+            HttpServletRequest request = RequestHolder.get();
+            if (request != null && request.getRequestURI() != null) {
+                return request.getRequestURI();
+            }
+        } catch (Exception ignored) {
+        }
+
+        try {
+            var request = Stapler.getCurrentRequest2();
+            if (request != null && request.getRequestURI() != null) {
+                return request.getRequestURI();
+            }
+        } catch (Exception ignored) {
+        }
+
+        return "";
+    }
+
+    private static Set<String> currentRequestParameterNames() {
+        try {
+            HttpServletRequest request = RequestHolder.get();
+            if (request != null) {
+                return request.getParameterMap().keySet();
+            }
+        } catch (Exception ignored) {
+        }
+
+        try {
+            var request = Stapler.getCurrentRequest2();
+            if (request != null) {
+                return request.getParameterMap().keySet();
+            }
+        } catch (Exception ignored) {
+        }
+
+        return Collections.emptySet();
     }
 }

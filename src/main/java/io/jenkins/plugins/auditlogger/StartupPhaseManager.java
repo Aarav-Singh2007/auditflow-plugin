@@ -1,6 +1,6 @@
 package io.jenkins.plugins.auditlogger;
 
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
@@ -13,10 +13,11 @@ import java.util.logging.Logger;
  */
 public class StartupPhaseManager {
     private static final Logger LOGGER = Logger.getLogger(StartupPhaseManager.class.getName());
+    static final long DUPLICATE_SUPPRESSION_WINDOW_MS = 2_000L;
 
     private static volatile long startupTime = -1;
     private static volatile int gracePeriodSeconds = 30;
-    private static final Set<String> recentlyLoggedTargets = ConcurrentHashMap.newKeySet();
+    private static final Map<String, Long> recentlyLoggedTargets = new ConcurrentHashMap<>();
 
     public static synchronized void initStartupTracking() {
         if (startupTime == -1) {
@@ -45,14 +46,44 @@ public class StartupPhaseManager {
     }
 
     public static boolean wasRecentlyLogged(String target) {
+        return wasRecentlyLogged(target, System.currentTimeMillis());
+    }
+
+    static boolean wasRecentlyLogged(String target, long nowMillis) {
         if (target == null || target.isEmpty()) return false;
-        return recentlyLoggedTargets.contains(target);
+        Long loggedAt = recentlyLoggedTargets.get(target);
+        if (loggedAt == null) {
+            return false;
+        }
+        if ((nowMillis - loggedAt) > DUPLICATE_SUPPRESSION_WINDOW_MS) {
+            recentlyLoggedTargets.remove(target, loggedAt);
+            return false;
+        }
+        return true;
     }
 
     public static void markAsLogged(String target) {
-        if (target != null && !target.isEmpty() && recentlyLoggedTargets.size() < 50000) {
-            recentlyLoggedTargets.add(target);
+        markAsLogged(target, System.currentTimeMillis());
+    }
+
+    static void markAsLogged(String target, long nowMillis) {
+        if (target != null && !target.isEmpty()) {
+            if (recentlyLoggedTargets.size() >= 50000) {
+                pruneExpiredTargets(nowMillis);
+                if (recentlyLoggedTargets.size() >= 50000) {
+                    recentlyLoggedTargets.clear();
+                }
+            }
+            recentlyLoggedTargets.put(target, nowMillis);
         }
+    }
+
+    static void resetRecentLogsForTests() {
+        recentlyLoggedTargets.clear();
+    }
+
+    private static void pruneExpiredTargets(long nowMillis) {
+        recentlyLoggedTargets.entrySet().removeIf(entry -> (nowMillis - entry.getValue()) > DUPLICATE_SUPPRESSION_WINDOW_MS);
     }
 
     public static void setGracePeriodSeconds(int seconds) {
