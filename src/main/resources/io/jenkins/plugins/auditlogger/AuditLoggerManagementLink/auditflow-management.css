@@ -225,6 +225,9 @@
 }
 
 .audit-view-toggle span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-height: calc(var(--audit-toolbar-control-height) - 0.3rem);
     padding: 0 0.7rem;
     border-radius: 7px;
