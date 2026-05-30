@@ -1,102 +1,192 @@
-Screenshots WIP as im UI changes not confirmed yet.
-# AuditFlow – Jenkins Audit Logs You Can Actually Understand
+# AuditFlow – Jenkins Audit Logging Plugin
 
-AuditFlow is a lightweight Jenkins plugin that turns raw audit logs into a clean, searchable dashboard.
+AuditFlow is a lightweight Jenkins plugin that provides comprehensive audit logging with a searchable dashboard for visibility and compliance. Capture authentication events, build activities, job configuration changes, credential operations, and plugin management in a clean, queryable interface.
 
-Instead of digging through system logs, you can instantly see:
-- Who triggered a build
-- What changed in jobs or configuration
-- When credentials were created or updated
-- Where actions originated from (IP, auth type)
+## What is AuditFlow?
 
-Built for real-world debugging and audit visibility.
+AuditFlow turns raw Jenkins audit logs into actionable visibility. Instead of searching through system logs, you get:
 
----
+- Complete audit trail of who did what and when
+- Search and filter capabilities across all audit events
+- Real-time dashboard with key metrics and statistics
+- Export functionality for compliance and analysis
+- REST API for integration with external systems
+- Configurable retention policies for log management
 
-## 🚀 Why AuditFlow?
+## Why AuditFlow?
 
-Most Jenkins audit plugins focus on logging.
-
-**AuditFlow focuses on visibility.**
-
-- No need for external tools (ELK, Splunk)
-- Built-in UI with filtering and search
-- Works out-of-the-box
-- Designed for engineers, not auditors
-
----
-
-## Screenshots
-
-### Audit Dashboard
-![Audit Dashboard](src/screenshots/07-audit-dashboard.png)
-
-### Audit Log Entries
-![Audit Log Entries](src/screenshots/06-audit-log-entries.png)
-
-### Manage Jenkins – AuditFlow Logs
-![Manage Jenkins](src/screenshots/08-manage-jenkins.png)
-
-### Configuration – Event Categories
-![Event Categories](src/screenshots/01-config-event-categories.png)
-
-### Configuration – Risk Detection
-![Risk Detection](src/screenshots/02-config-risk-detection.png)
-
-### Configuration – Log Retention & Dashboard
-![Retention & Dashboard](src/screenshots/03-config-retention-dashboard.png)
-
-### Configuration – Export & REST API
-![Export & API](src/screenshots/04-config-export-api.png)
-
-### Configuration – Optimization & Data Masking
-![Optimization & Masking](src/screenshots/05-config-optimization-masking.png)
-
----
+- **Out-of-the-box visibility** – No external tools required; built-in dashboard provides immediate insights
+- **Non-intrusive** – Asynchronous logging with zero impact on build performance
+- **Comprehensive tracking** – Captures authentication, builds, configurations, credentials, plugins, and more
+- **Enterprise-ready** – Designed for teams needing audit compliance and security visibility
+- **Flexible configuration** – Enable/disable event categories based on your needs
 
 ## Features
 
-- **Paginated Audit Viewer** – 100/500/1000 per page with filtering and search
-- **Color-Coded Severity** – Visual badges (Critical, High, Medium, Low, Info)
-- **IP Address Tracking** – Source IP capture with async caching
-- **Export** – CSV, JSON, TXT with formula-injection protection
-- **REST API** – Query logs at `/auditflow/api/logs`
-- **Risk Detection** – Failed login tracking, off-hours alerts, production job changes
-- **Log Rotation** – Automatic rotation with configurable retention
-- **Data Masking** – Mask tokens, emails, credit cards in log details
-- **Async & Non-Blocking** – Zero impact on build performance
+- **Real-time Audit Dashboard** – View events with pagination (100/500/1000 rows per page)
+- **Advanced Search & Filtering** – Filter by user, action, target, timestamp, and more
+- **Risk Indicators** – Color-coded severity badges and anomaly detection
+- **IP Address Tracking** – Capture source IP for all events
+- **Export Capabilities** – CSV and JSON export with formula-injection protection
+- **REST API** – Query audit logs programmatically at `/auditflow/api/logs`
+- **Configurable Event Categories** – Choose what to track (authentication, builds, jobs, credentials, plugins, system config, nodes, API calls)
+- **Automatic Log Rotation** – Configurable retention policies (default 90 days)
+- **Data Masking** – Optional masking of tokens, credit cards, and sensitive information
+- **Dashboard Customization** – Configure time zones, display metrics, and visible counters
+- **Non-blocking Performance** – Async batch writes with configurable batch size and flush intervals
 
 ## Requirements
 
-- Jenkins 2.361.4+
-- Java 11+
+- **Jenkins baseline:** 2.541 or later
+- **Java:** 11 or later
 
 ## Installation
 
-### Build from Source
+### From Jenkins Plugin Library
 
-```bash
-mvn clean package -DskipTests
-```
+1. Go to **Manage Jenkins** → **Plugins** → **Available plugins**
+2. Search for **AuditFlow**
+3. Click **Install** and select "Restart Jenkins when installation is complete"
+4. Jenkins will restart and AuditFlow will be activated
 
-Output: `target/auditflow-<version>.hpi`
+Alternatively, if you prefer manual installation:
 
-### Install in Jenkins
-
-1. **Manage Jenkins -> Plugins -> Advanced -> Upload Plugin**
-2. Upload `target/auditflow-<version>.hpi`
+1. Go to **Manage Jenkins** → **Plugins** → **Advanced** → **Upload Plugin**
+2. Upload the plugin file
 3. Restart Jenkins
-
-Or copy directly:
-
-```bash
-cp target/auditflow-<version>.hpi $JENKINS_HOME/plugins/auditflow.jpi
-systemctl restart jenkins
-```
 
 ## Configuration
 
-**Manage Jenkins -> Configure System -> AuditFlow Configuration**
+Access configuration at: **Manage Jenkins** → **System** → **AuditFlow Configuration**
+
+### What to Track (Event Categories)
+
+Choose which events to capture and store:
+
+- **Authentication** – Login, logout, failed login, API authentication (Enabled by default)
+- **Builds** – Build start, complete, fail, abort, delete (Enabled by default)
+- **Job Changes** – Job create, rename, copy, move, delete, config updates (Enabled by default)
+- **Credentials** – Credential create, update, delete, usage during builds (Enabled by default)
+- **Plugins** – Plugin install, update, remove, enable, disable (Enabled by default)
+- **System Configuration** – Security and global settings (Disabled by default)
+- **Nodes** – Node create, delete, config changes (Disabled by default)
+- **API Calls** – REST API activity (Disabled by default)
+
+### Dashboard Display Settings
+
+Customize how events are displayed:
+
+- **Stats counters row** – Show daily event totals (Enabled by default)
+- **Risk level badges** – Color-coded severity indicators (Disabled by default)
+- **Display time zone** – Select your preferred timezone (default: UTC)
+- **Visible stats counters** – Choose which metrics appear (Total Events, Logins, Failed Logins, Builds, Job Events, Config Changes)
+
+### Export & API Options
+
+- **CSV Export** – Enable/disable CSV export functionality (Enabled by default)
+- **JSON Export** – Enable/disable JSON export functionality (Enabled by default)
+- **REST API endpoint** – Query logs at `/auditflow/api` (Enabled by default)
+
+### Advanced Settings
+
+#### Log Retention
+
+- **Keep logs for (days)** – Default 90 days (0 = keep forever)
+- **Max log file size (MB)** – Default 50 MB per file
+- **Auto-rotate when size exceeded** – Automatically rotate logs when size threshold is reached
+
+#### Performance & Optimization
+
+- **Startup grace period (seconds)** – Suppress config-reload noise during startup (5–300 seconds, default 120)
+- **Batch write size** – Number of events batched before writing (default 100)
+- **Batch flush interval (seconds)** – Maximum time before flushing batch (default 5 seconds)
+- **Note:** Anomaly detection is temporarily disabled to keep write performance predictable
+
+#### Privacy & Data Masking
+
+- **Mask tokens and secrets** – Hide API tokens and credentials in log details (Enabled by default)
+- **Mask email addresses** – Anonymize user emails (Disabled by default)
+- **Mask credit card numbers** – Hide payment card numbers (Enabled by default)
+
+## Screenshots
+
+### Main Audit Dashboard
+![Main Dashboard](src/screenshots/01-main-dashboard.png)
+
+Dashboard overview showing today's event metrics, search/filtering interface, and a table of recent audit entries with timestamp, user, action, target, details, source IP, and authentication trigger.
+
+### Insights Panel
+![Insights Panel](src/screenshots/02-insights-panel.png)
+
+Quick summary of top issues and risky activity detected today, including failed login attempts, plugin changes, and most active users.
+
+### Export Options
+![Export Menu](src/screenshots/03-export-menu.png)
+
+Export functionality supporting CSV and JSON formats for compliance, analysis, and external tool integration.
+
+### Configuration – What to Track
+![What to Track](src/screenshots/04-config-what-to-track.png)
+
+Enable/disable specific audit event categories including authentication, builds, job changes, credentials, plugins, system configuration, nodes, and API calls.
+
+### Configuration – Dashboard Display
+![Dashboard Display](src/screenshots/05-config-dashboard-display.png)
+
+Customize dashboard appearance including stats counters, risk badges, timezone selection, and which metrics are visible.
+
+### Configuration – Export & API
+![Export & API](src/screenshots/06-config-export-api.png)
+
+Control availability of export formats (CSV, JSON) and REST API endpoint for external integrations.
+
+### Configuration – Log Retention
+![Log Retention](src/screenshots/07-config-advanced-retention.png)
+
+Configure how long logs are retained, maximum log file size, and automatic rotation settings.
+
+### Configuration – Performance & Privacy
+![Performance & Privacy](src/screenshots/08-config-performance-privacy.png)
+
+Advanced settings for batch processing, startup grace period, and data masking options to balance performance with privacy requirements.
+
+## External Logging Integration
+
+For immutable log storage and long-term retention, consider sending AuditFlow logs to external logging platforms:
+
+- **Splunk** – Use the Splunk HTTP Event Collector (HEC) to forward logs
+- **CloudWatch** – Push logs to AWS CloudWatch for centralized monitoring
+- **Datadog** – Ship logs to Datadog for analysis and alerting
+- **ELK Stack** – Send logs to Elasticsearch for advanced querying and visualization
+- **Sumo Logic** – Forward logs to Sumo Logic for security and compliance
+- **LogStash/Fluentd** – Use log forwarders to send logs to your SIEM
+
+External logging provides:
+- Audit log immutability (protection against tampering)
+- Long-term retention beyond plugin storage limits
+- Centralized log analysis across infrastructure
+- Advanced search, alerting, and compliance reporting
+
+## Reporting Issues
+
+If you encounter any issues, bugs, or have feature requests:
+
+1. Check existing issues in the repository
+2. Provide detailed reproduction steps
+3. Include Jenkins version, Java version, and plugin version
+4. Share relevant log excerpts from Jenkins logs
+
+Issues reported will be reviewed and fixed in upcoming releases. Community contributions are also welcome.
+
+## Version Information
+
+**Current Version:** 1.0.0
+
+**License:** MIT
+
+**Baseline Jenkins Version:** 2.541+
+
+**Java Requirement:** 11+
 
 ### Event Categories
 
@@ -264,20 +354,6 @@ MIT License.
 - **Issues:** Report bugs and feature requests on GitHub
 
 ## Version History
-
-### 1.1.1
-- Refined Insights to summarize current-day activity while honoring the active filters
-- Kept anomaly detection and the anomaly row disabled while still using thresholds for Insights prioritization
-- Preserved non-visible configuration values across Configure System save cycles
-- Validated config round-trips and log rotation behavior live on Jenkins 2.541.3
-
-### 1.1.0
-- Verified plugin build compatibility against Jenkins 2.440
-- Live regression validation completed for credentials, plugin lifecycle events, authentication events, and build outcomes
-- Fixed timestamp reload drift so persisted events keep their original audit time after restart
-- Fixed credential mutation detection on the first post-startup change
-- Fixed plugin manager route handling for modern `/plugin/{name}/...` endpoints
-- Removed runtime anomaly detection work from the audit hot path to keep write latency predictable under load
 
 ### 1.0.0
 - Initial public release
