@@ -57,18 +57,25 @@ These dependencies are automatically installed when you install AuditFlow throug
 
 ## Installation
 
-### From Jenkins Plugin Library
+### From Jenkins Plugin Library (Recommended)
 
 1. Go to **Manage Jenkins** → **Plugins** → **Available plugins**
 2. Search for **AuditFlow**
 3. Click **Install** and select "Restart Jenkins when installation is complete"
 4. Jenkins will restart and AuditFlow will be activated
 
-Alternatively, if you prefer manual installation:
+**Dependencies are automatically resolved and installed** by Jenkins Plugin Manager during this process. No manual steps required.
 
-1. Go to **Manage Jenkins** → **Plugins** → **Advanced** → **Upload Plugin**
-2. Upload the plugin file
-3. Restart Jenkins
+### Manual Installation
+
+If you prefer to upload the plugin directly:
+
+1. Ensure all [plugin dependencies](#plugin-dependencies) are already installed in your Jenkins instance
+2. Go to **Manage Jenkins** → **Plugins** → **Advanced** → **Upload Plugin**
+3. Upload the `.hpi` file
+4. Restart Jenkins
+
+**Note:** When installing manually, you must install dependencies first. The Plugin Manager cannot resolve dependencies during manual uploads.
 
 ## Configuration
 
