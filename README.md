@@ -40,6 +40,21 @@ AuditFlow turns raw Jenkins audit logs into actionable visibility. Instead of se
 - **Jenkins baseline:** 2.541 or later
 - **Java:** 11 or later
 
+## Plugin Dependencies
+
+AuditFlow depends on the following Jenkins plugins:
+
+| Plugin | Group ID | Artifact ID | Purpose |
+|--------|----------|-------------|---------|
+| **GSON API** | io.jenkins.plugins | gson-api | JSON serialization and deserialization |
+| **Credentials Binding** | org.jenkins-ci.plugins | credentials-binding | Credential management integration |
+| **Git Plugin** | org.jenkins-ci.plugins | git | Git operations auditing |
+| **Workflow: Job** | org.jenkins-ci.plugins.workflow | workflow-job | Jenkins Pipeline job auditing |
+| **Workflow: CPS** | org.jenkins-ci.plugins.workflow | workflow-cps | Pipeline execution auditing |
+| **Ionicons API** | io.jenkins.plugins | ionicons-api | Dashboard UI icons |
+
+These dependencies are automatically installed when you install AuditFlow through the Jenkins Plugin Manager. If installing manually, ensure all dependencies are available in your Jenkins instance.
+
 ## Installation
 
 ### From Jenkins Plugin Library
