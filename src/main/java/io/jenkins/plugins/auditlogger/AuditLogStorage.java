@@ -56,7 +56,8 @@ public class AuditLogStorage {
     private static volatile AuditLogStorage instance;
 
     // Anomaly detection — wired into every event
-    private final AnomalyDetector anomalyDetector = new AnomalyDetector();
+    // not final so tests can inject a mock detector via reflection
+    private AnomalyDetector anomalyDetector = new AnomalyDetector();
 
     // Bounded in-memory buffer for queries (UI, API, export)
     private final ArrayDeque<AuditLogEntry> memoryBuffer = new ArrayDeque<>(MAX_ENTRIES_IN_MEMORY + 64);
@@ -146,6 +147,13 @@ public class AuditLogStorage {
             }
         } finally {
             bufferLock.writeLock().unlock();
+        }
+
+        // run anomaly detection on every new event - this is what actually triggers our alerts!
+        try {
+            anomalyDetector.analyze(entry);
+        } catch (Exception e) {
+            LOGGER.log(Level.FINE, "Anomaly detection failed for entry", e);
         }
 
         // Queue for async disk write (lock-free)
