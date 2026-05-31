@@ -56,7 +56,8 @@ public class AuditLogStorage {
     private static volatile AuditLogStorage instance;
 
     // Anomaly detection — wired into every event
-    private final AnomalyDetector anomalyDetector = new AnomalyDetector();
+    // not final so tests can inject a mock detector via reflection
+    private AnomalyDetector anomalyDetector = new AnomalyDetector();
 
     // Bounded in-memory buffer for queries (UI, API, export)
     private final ArrayDeque<AuditLogEntry> memoryBuffer = new ArrayDeque<>(MAX_ENTRIES_IN_MEMORY + 64);

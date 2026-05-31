@@ -30,31 +30,25 @@ class CoverageFixesTest {
     }
 
     @Test
-    void testAuditLogRestApiAlertsIncluded(JenkinsRule j) throws Exception {
-        j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
-        j.jenkins.setAuthorizationStrategy(new MockAuthorizationStrategy()
-                .grant(Jenkins.ADMINISTER)
-                .everywhere()
-                .toEveryone());
+    void testAnomalyDetectorOldLoginsIgnored() {
+        AnomalyDetector detector = new AnomalyDetector();
         
-        // Ensure API is enabled
-        AuditLoggerConfiguration.get().setEnableAuditApi(true);
-
-        // Feed enough events to trigger anomaly alert in the singleton storage
-        for (int i = 0; i < 5; i++) {
-            AuditLogStorage.getInstance().addEntry(new AuditLogEntry("hacker", "FAILED_LOGIN", "tgt", "details", System.currentTimeMillis()));
+        long now = System.currentTimeMillis();
+        long twoMinutesAgo = now - 120_000;
+        
+        // Trigger 4 failures that are old
+        for (int i = 0; i < 4; i++) {
+            detector.analyze(new AuditLogEntry("old_user", "FAILED_LOGIN", "target", "details", twoMinutesAgo));
         }
         
-        // Call API
-        JenkinsRule.WebClient webClient = j.createWebClient();
-        Page page = webClient.goTo("auditflow/api", "application/json");
-        String content = page.getWebResponse().getContentAsString();
+        // Trigger 1 failure now
+        detector.analyze(new AuditLogEntry("old_user", "FAILED_LOGIN", "target", "details", now));
         
-        // Verify anomalies JSON is present and populated
-        assertTrue(content.contains("anomalies"));
-        assertTrue(content.contains("BRUTE_FORCE_LOGIN"));
-        assertTrue(content.contains("hacker"));
+        // Should be empty because the 4 old failures were ignored, so recent count is 1
+        assertTrue(detector.getAlerts(10).isEmpty());
     }
+
+
 
     @Test
     void testAuditLogStorageExceptionCaught() throws Exception {

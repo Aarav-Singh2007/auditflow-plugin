@@ -46,7 +46,9 @@ public class AnomalyDetector {
         // we only care about failed logins for now
         if ("FAILED_LOGIN".equals(entry.getAction())) {
             String user = entry.getUsername();
-            long now = System.currentTimeMillis();
+            // use the entry's own timestamp so we detect based on when the event happened,
+            // not when we processed it - also makes old-login scenarios testable
+            long eventTime = entry.getTimestamp();
             
             // setup the list if this is their first fail
             failedLogins.putIfAbsent(user, new ArrayList<>());
@@ -54,10 +56,10 @@ public class AnomalyDetector {
             
             // stackoverflow said we need to synchronize when iterating a normal ArrayList inside a concurrent map
             synchronized(times) {
-                times.add(now);
+                times.add(eventTime);
                 
                 // 3. Count how many failures happened in the last 60 seconds (60,000 milliseconds)
-                long oneMinuteAgo = now - 60000;
+                long oneMinuteAgo = eventTime - 60000;
                 int recentFailures = 0;
                 
                 for (Long time : times) {
