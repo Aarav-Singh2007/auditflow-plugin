@@ -635,7 +635,10 @@ public class AuditLoggerManagementLink extends ManagementLink {
             if ("CREDENTIAL_UPDATED".equals(action)) credUpdates++;
             if ("CREDENTIAL_CREATED".equals(action)) credCreates++;
             if ("CREDENTIAL_DELETED".equals(action)) credDeletes++;
-            if (action.startsWith("PLUGIN")) pluginChanges++;
+            if (action.startsWith("PLUGIN")) {
+                String target = entry.getTarget();
+                pluginChanges += (target != null && !target.isEmpty()) ? target.split(",").length : 1;
+            }
             if ("JOB_DELETED".equals(action)) jobDeletes++;
             if ("GLOBAL_CONFIG_UPDATED".equals(action) || "SYS_CONFIG_UPDATED".equals(action)) globalCfg++;
             if ("JOB_CONFIG_UPDATED".equals(action)) jobCfg++;
