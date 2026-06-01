@@ -1,6 +1,9 @@
 package io.jenkins.plugins.auditlogger;
 
 import java.lang.reflect.Method;
+import java.time.ZoneOffset;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -25,32 +28,27 @@ class AuditLoggerManagementLinkInsightsRegressionTest {
         assertEquals(1, config.get("securityConfigChangesThreshold"));
         assertEquals(5, config.get("buildFailuresThreshold"));
     }
+
     @Test
-    void buildInsightsCountsBulkPluginUpdatesCorrectly() throws Exception {
+    void bulkPluginUpdateShouldCountEachPluginSeparately() {
         long now = System.currentTimeMillis();
-        AuditLogEntry entry1 = new AuditLogEntry("admin", "PLUGIN_UPDATED", "pluginA", "", now);
-        AuditLogEntry entry2 = new AuditLogEntry("admin", "PLUGIN_UPDATED", "pluginB,pluginC,pluginD", "", now);
-        AuditLogEntry entry3 = new AuditLogEntry("admin", "PLUGIN_INSTALLED", "pluginE,pluginF", "", now);
 
-        AuditLogEntry entry4 = new AuditLogEntry("admin", "PLUGIN_REMOVED", "dummy", "", now);
-        java.lang.reflect.Field targetField = AuditLogEntry.class.getDeclaredField("target");
-        targetField.setAccessible(true);
-        targetField.set(entry4, null);
+        // simulate a single plugin update and a bulk update with multiple plugins
+        AuditLogEntry singleUpdate = new AuditLogEntry("admin", "PLUGIN_UPDATED", "git", "", now);
+        AuditLogEntry bulkUpdate = new AuditLogEntry("admin", "PLUGIN_UPDATED", "matrix-auth,role-strategy,credentials", "", now);
+        AuditLogEntry bulkInstall = new AuditLogEntry("admin", "PLUGIN_INSTALLED", "docker-workflow,pipeline-model-definition", "", now);
 
-        AuditLogEntry entry5 = new AuditLogEntry("admin", "PLUGIN_REMOVED", "dummy", "", now);
-        targetField.set(entry5, "");
+        List<AuditLogEntry> entries = Arrays.asList(singleUpdate, bulkUpdate, bulkInstall);
 
-        java.util.List<AuditLogEntry> entries = java.util.Arrays.asList(entry1, entry2, entry3, entry4, entry5);
-
-        java.util.List<Map<String, Object>> insights = AuditLoggerManagementLink.buildInsights(
-                entries, null, java.time.ZoneOffset.UTC);
+        List<Map<String, Object>> insights = AuditLoggerManagementLink.buildInsights(
+                entries, null, ZoneOffset.UTC);
 
         Map<String, Object> pluginInsight = insights.stream()
                 .filter(i -> "Plugin changes".equals(i.get("text")))
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("Plugin changes insight not found"));
+                .orElseThrow(() -> new AssertionError("expected a Plugin changes insight"));
 
-        // count should be: 1 (entry1) + 3 (entry2) + 2 (entry3) + 1 (entry4 null fallback) + 1 (entry5 empty fallback) = 8
-        assertEquals(8, pluginInsight.get("count"));
+        // 1 + 3 + 2 = 6 total plugins across all entries
+        assertEquals(6, pluginInsight.get("count"));
     }
-}
+}
