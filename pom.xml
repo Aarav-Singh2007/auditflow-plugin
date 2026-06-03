@@ -36,7 +36,7 @@
     </scm>
 
     <properties>
-        <changelist>1.0.0</changelist>
+        <changelist>1.0.1</changelist>
         <gitHubRepo>jenkinsci/auditflow-plugin</gitHubRepo>
         <hpi.bundledArtifacts />
         <hpi.strictBundledArtifacts>true</hpi.strictBundledArtifacts>
