@@ -9,10 +9,21 @@ import static org.junit.jupiter.api.Assertions.*;
 @WithJenkins
 class CoverageFixesTest {
 
+    /**
+     * Create a test configuration with anomaly detection enabled.
+     */
+    private AuditLoggerConfiguration createTestConfigWithAnomalyDetectionEnabled() {
+        AuditLoggerConfiguration config = new AuditLoggerConfiguration();
+        config.setAnomalyFailedLogins(true);
+        config.setAnomalyFailedLoginsThreshold(5);
+        config.setAnomalyFailedLoginsWindowMinutes(15);
+        return config;
+    }
+
     @Test
     void testAnomalyDetectorBruteForce() {
         AnomalyDetector detector = new AnomalyDetector();
-        AuditLoggerConfiguration config = AuditLoggerConfiguration.get();
+        AuditLoggerConfiguration config = createTestConfigWithAnomalyDetectionEnabled();
         
         // Trigger 4 failures - no alert
         for (int i = 0; i < 4; i++) {
@@ -30,7 +41,7 @@ class CoverageFixesTest {
     @Test
     void testAnomalyDetectorOldLoginsIgnored() {
         AnomalyDetector detector = new AnomalyDetector();
-        AuditLoggerConfiguration config = AuditLoggerConfiguration.get();
+        AuditLoggerConfiguration config = createTestConfigWithAnomalyDetectionEnabled();
         
         long now = 2_000_000L;
         long twoMinutesAgo = now - 120_000;
@@ -50,7 +61,7 @@ class CoverageFixesTest {
     @Test
     void testAnomalyDetectorReturnsLatestAlertsWhenLimited() {
         AnomalyDetector detector = new AnomalyDetector();
-        AuditLoggerConfiguration config = AuditLoggerConfiguration.get();
+        AuditLoggerConfiguration config = createTestConfigWithAnomalyDetectionEnabled();
 
         // Add 5 failures for user-one (triggers alert)
         for (int i = 0; i < 5; i++) {

@@ -68,7 +68,8 @@ public class AnomalyDetector {
             return;
         }
 
-        boolean detectionEnabled = config == null || config.isAnomalyFailedLogins();
+        // Anomaly detection is DISABLED by default; only enable if explicitly configured
+        boolean detectionEnabled = config != null && config.isAnomalyFailedLogins();
         if (!detectionEnabled) {
             maybeCleanup(entry.getTimestamp(),
                     config != null ? config.getAnomalyFailedLoginsWindowMinutes() : DEFAULT_FAILED_LOGIN_WINDOW_MINUTES);
@@ -99,12 +100,13 @@ public class AnomalyDetector {
             window.timestamps.addLast(eventTime);
             recentFailures = window.timestamps.size();
             if (recentFailures >= threshold) {
-                activeAlerts.add(new AnomalyAlert(
+                AnomalyAlert alert = new AnomalyAlert(
                         AnomalyType.BRUTE_FORCE_LOGIN,
                         user,
                         "User failed to log in " + recentFailures + " times in "
                                 + windowMinutes + " minute" + (windowMinutes == 1 ? "" : "s") + ".",
-                        "CRITICAL"));
+                        "CRITICAL");
+                activeAlerts.add(alert);
                 trimAlerts();
                 window.timestamps.clear();
             }

@@ -17,8 +17,8 @@
     var defaultDateTo = '';
     var onboardingStorageKey = 'auditflow-onboarded';
     var anomalyActions = [];
-    var anomalyDismissedKey = 'auditflow-anomaly-dismissed-' + new Date().toISOString().slice(0, 10);
-    var anomalyDismissed = sessionStorage.getItem(anomalyDismissedKey) === 'true';
+    var anomalyDismissedKey = null; // Set dynamically using server's displayToday
+    var anomalyDismissed = false;
 
     function setHidden(element, hidden) {
         if (element) {
@@ -122,6 +122,10 @@
                 currentPage = data.page || currentPage;
                 displayTimeZone = data.displayTimeZone || 'UTC';
                 displayToday = data.displayToday || '';
+                
+                // Use server's displayToday for consistency with server-side dismissal tracking
+                anomalyDismissedKey = 'auditflow-anomaly-dismissed-' + displayToday;
+                anomalyDismissed = sessionStorage.getItem(anomalyDismissedKey) === 'true';
                 
                 // hey! grabbing our new alerts from Phase 2
                 var serverAnomalies = data.anomalies || [];
@@ -360,13 +364,20 @@
         var status = document.getElementById('anomalyStatus');
         if (!box || !status) return;
 
-        if (anomalies.length > 0) {
+        if (anomalies.length > 0 && !anomalyDismissed) {
             var latest = anomalies[anomalies.length - 1];
             box.classList.remove('jenkins-hidden');
             box.classList.add('anomaly-alert');
             box.classList.remove('anomaly-dismissed');
             status.textContent = latest.type + ': ' + latest.details;
+        } else if (anomalies.length > 0 && anomalyDismissed) {
+            // Anomalies exist but user dismissed them
+            box.classList.add('jenkins-hidden');
+            box.classList.remove('anomaly-alert');
+            box.classList.add('anomaly-dismissed');
+            status.textContent = 'No anomaly detected';
         } else {
+            // No anomalies at all
             box.classList.add('jenkins-hidden');
             box.classList.remove('anomaly-alert');
             box.classList.remove('anomaly-dismissed');
@@ -417,12 +428,15 @@
 
     function dismissAnomaly() {
         anomalyDismissed = true;
-        sessionStorage.setItem(anomalyDismissedKey, 'true');
+        if (anomalyDismissedKey) {
+            sessionStorage.setItem(anomalyDismissedKey, 'true');
+        }
         var box = document.getElementById('anomalyBox');
         var status = document.getElementById('anomalyStatus');
         if (box) {
+            box.classList.add('jenkins-hidden');
             box.classList.remove('anomaly-alert');
-            box.classList.remove('anomaly-dismissed');
+            box.classList.add('anomaly-dismissed');
         }
         if (status) {
             status.textContent = 'No anomaly detected';
