@@ -358,19 +358,19 @@
     function renderServerAnomalies(anomalies) {
         var box = document.getElementById('anomalyBox');
         var status = document.getElementById('anomalyStatus');
-        
         if (!box || !status) return;
 
         if (anomalies.length > 0) {
-            // grab the latest one
             var latest = anomalies[anomalies.length - 1];
             box.classList.remove('jenkins-hidden');
-            box.style.border = '2px solid red'; // make it pop!
-            status.innerHTML = '<strong>' + latest.type + '</strong>: ' + latest.details;
-            status.style.color = '#cc0000';
+            box.classList.add('anomaly-alert');
+            box.classList.remove('anomaly-dismissed');
+            status.textContent = latest.type + ': ' + latest.details;
         } else {
-            // leave it hidden if there's nothing wrong
-            // box.classList.add('jenkins-hidden'); 
+            box.classList.add('jenkins-hidden');
+            box.classList.remove('anomaly-alert');
+            box.classList.remove('anomaly-dismissed');
+            status.textContent = 'No anomaly detected';
         }
     }
 

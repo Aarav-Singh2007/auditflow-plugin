@@ -184,6 +184,13 @@ public class AuditLoggerConfiguration extends GlobalConfiguration {
         if (json.has("enableCredentialEvents")) setEnableCredentialEvents(json.optBoolean("enableCredentialEvents", enableCredentialEvents));
         if (json.has("enablePluginEvents")) setEnablePluginEvents(json.optBoolean("enablePluginEvents", enablePluginEvents));
         if (json.has("enableSystemConfigEvents")) setEnableSystemConfigEvents(json.optBoolean("enableSystemConfigEvents", enableSystemConfigEvents));
+        if (json.has("anomalyFailedLogins")) setAnomalyFailedLogins(json.optBoolean("anomalyFailedLogins", anomalyFailedLogins));
+        if (json.has("anomalyFailedLoginsThreshold")) {
+            setAnomalyFailedLoginsThreshold(json.optInt("anomalyFailedLoginsThreshold", anomalyFailedLoginsThreshold));
+        }
+        if (json.has("anomalyFailedLoginsWindowMinutes")) {
+            setAnomalyFailedLoginsWindowMinutes(json.optInt("anomalyFailedLoginsWindowMinutes", anomalyFailedLoginsWindowMinutes));
+        }
 
         if (json.has("enableDashboardStats")) setEnableDashboardStats(json.optBoolean("enableDashboardStats", enableDashboardStats));
         if (json.has("enableRiskLevels")) setEnableRiskLevels(json.optBoolean("enableRiskLevels", enableRiskLevels));
@@ -294,6 +301,24 @@ public class AuditLoggerConfiguration extends GlobalConfiguration {
     @DataBoundSetter
     public void setEnableSystemConfigEvents(boolean enableSystemConfigEvents) {
         this.enableSystemConfigEvents = enableSystemConfigEvents;
+        save();
+    }
+
+    @DataBoundSetter
+    public void setAnomalyFailedLogins(boolean anomalyFailedLogins) {
+        this.anomalyFailedLogins = anomalyFailedLogins;
+        save();
+    }
+
+    @DataBoundSetter
+    public void setAnomalyFailedLoginsThreshold(int anomalyFailedLoginsThreshold) {
+        this.anomalyFailedLoginsThreshold = clamp(anomalyFailedLoginsThreshold, 2, 1000);
+        save();
+    }
+
+    @DataBoundSetter
+    public void setAnomalyFailedLoginsWindowMinutes(int anomalyFailedLoginsWindowMinutes) {
+        this.anomalyFailedLoginsWindowMinutes = clamp(anomalyFailedLoginsWindowMinutes, 1, 1440);
         save();
     }
 

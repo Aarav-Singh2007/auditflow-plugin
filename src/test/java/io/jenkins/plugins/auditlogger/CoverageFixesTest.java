@@ -1,11 +1,7 @@
 package io.jenkins.plugins.auditlogger;
 
-import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
-import org.jvnet.hudson.test.MockAuthorizationStrategy;
 import org.junit.jupiter.api.Test;
-import jenkins.model.Jenkins;
-import org.htmlunit.Page;
 
 import java.lang.reflect.Field;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -48,6 +44,21 @@ class CoverageFixesTest {
         assertTrue(detector.getAlerts(10).isEmpty());
     }
 
+    @Test
+    void testAnomalyDetectorReturnsLatestAlertsWhenLimited() {
+        AnomalyDetector detector = new AnomalyDetector();
+
+        for (int i = 0; i < 5; i++) {
+            detector.analyze(new AuditLogEntry("user-one", "FAILED_LOGIN", "target", "details", 1_000L + i));
+        }
+        for (int i = 0; i < 5; i++) {
+            detector.analyze(new AuditLogEntry("user-two", "FAILED_LOGIN", "target", "details", 2_000L + i));
+        }
+
+        assertTrue(detector.getAlerts(1).size() == 1);
+        assertTrue("user-two".equals(detector.getAlerts(1).get(0).user));
+    }
+
 
 
     @Test
@@ -55,7 +66,7 @@ class CoverageFixesTest {
         // Inject an anonymous anomaly detector that throws an exception
         AnomalyDetector mockDetector = new AnomalyDetector() {
             @Override
-            public void analyze(AuditLogEntry entry) {
+            public void analyze(AuditLogEntry entry, AuditLoggerConfiguration config) {
                 throw new RuntimeException("Simulated exception");
             }
         };

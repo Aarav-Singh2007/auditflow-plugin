@@ -141,7 +141,7 @@
             <f:block>
                 <h4>Performance</h4>
                 <div class="jenkins-section__description">
-                    Anomaly detection is temporarily disabled to keep writes predictable under load.
+                    Batch settings control write throughput. Failed-login detection is lightweight and configurable below.
                 </div>
                 <f:entry title="Startup grace period (seconds)"
                          description="Suppress config-reload noise during startup. Valid range: 5-300.">
@@ -152,6 +152,23 @@
                 </f:entry>
                 <f:entry title="Batch flush interval (seconds)">
                     <f:number name="batchFlushIntervalSeconds" value="${descriptor.getBatchFlushIntervalSeconds()}"/>
+                </f:entry>
+            </f:block>
+
+            <f:block>
+                <h4>Failed Login Detection</h4>
+                <div class="jenkins-section__description">
+                    Detect repeated failed logins for the same username and surface them in the AuditFlow dashboard.
+                </div>
+                <f:entry title="Enable failed login anomaly detection">
+                    <f:checkbox name="anomalyFailedLogins" checked="${descriptor.isAnomalyFailedLogins()}"/>
+                </f:entry>
+                <f:entry title="Alert threshold"
+                         description="Raise an alert after this many failed logins for the same user within the configured window.">
+                    <f:number name="anomalyFailedLoginsThreshold" value="${descriptor.getAnomalyFailedLoginsThreshold()}"/>
+                </f:entry>
+                <f:entry title="Window (minutes)">
+                    <f:number name="anomalyFailedLoginsWindowMinutes" value="${descriptor.getAnomalyFailedLoginsWindowMinutes()}"/>
                 </f:entry>
             </f:block>
 

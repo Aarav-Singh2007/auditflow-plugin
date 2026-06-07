@@ -106,6 +106,7 @@ public class AuditLoggerManagementLink extends ManagementLink {
             response.put("logs", toDisplayEntries(page.entries, displayZone));
             response.put("summary", buildSummary(filteredEntries, displayZone));
             response.put("insights", buildInsights(filteredEntries, config, displayZone));
+            response.put("anomalies", mapAnomalyAlerts(AuditLogStorage.getInstance().getAnomalyDetector().getAlerts(10)));
             response.put("anomalyConfig", buildAnomalyConfig(config));
             response.put("displayTimeZone", displayZone.getId());
             response.put("displayToday", LocalDate.now(displayZone).toString());
@@ -277,6 +278,24 @@ public class AuditLoggerManagementLink extends ManagementLink {
         anomalyConfig.put("securityConfigChangesThreshold", config.getAnomalySecurityConfigChangesThreshold());
         anomalyConfig.put("buildFailuresThreshold", config.getAnomalyBuildFailuresThreshold());
         return anomalyConfig;
+    }
+
+    private static List<Map<String, Object>> mapAnomalyAlerts(List<AnomalyDetector.AnomalyAlert> alerts) {
+        if (alerts == null || alerts.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        var mappedAlerts = new ArrayList<Map<String, Object>>(alerts.size());
+        for (AnomalyDetector.AnomalyAlert alert : alerts) {
+            var mappedAlert = new LinkedHashMap<String, Object>();
+            mappedAlert.put("type", alert.type.name());
+            mappedAlert.put("user", alert.user);
+            mappedAlert.put("details", alert.details);
+            mappedAlert.put("severity", alert.severity);
+            mappedAlert.put("timestamp", alert.timestamp);
+            mappedAlerts.add(mappedAlert);
+        }
+        return mappedAlerts;
     }
 
     public boolean getShowMetricTotal() {
@@ -947,17 +966,7 @@ public class AuditLoggerManagementLink extends ManagementLink {
             var response = new LinkedHashMap<String, Object>();
             response.put("count", alerts.size());
 
-            var alertList = new ArrayList<Map<String, Object>>();
-            for (AnomalyDetector.AnomalyAlert alert : alerts) {
-                var mappedAlert = new LinkedHashMap<String, Object>();
-                mappedAlert.put("type", alert.type.name());
-                mappedAlert.put("user", alert.user);
-                mappedAlert.put("details", alert.details);
-                mappedAlert.put("severity", alert.severity);
-                mappedAlert.put("timestamp", alert.timestamp);
-                alertList.add(mappedAlert);
-            }
-            response.put("alerts", alertList);
+            response.put("alerts", mapAnomalyAlerts(alerts));
 
             res.setContentType("application/json; charset=UTF-8");
             res.getWriter().write(gson.toJson(response));
