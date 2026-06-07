@@ -103,8 +103,9 @@ public class AnomalyDetector {
                 AnomalyAlert alert = new AnomalyAlert(
                         AnomalyType.BRUTE_FORCE_LOGIN,
                         user,
-                        "User failed to log in " + recentFailures + " times in "
-                                + windowMinutes + " minute" + (windowMinutes == 1 ? "" : "s") + ".",
+                    "Multiple failed logins detected for \"" + user + "\" ("
+                        + recentFailures + " attempts in "
+                        + windowMinutes + " minute" + (windowMinutes == 1 ? "" : "s") + ").",
                         "CRITICAL");
                 activeAlerts.add(alert);
                 trimAlerts();

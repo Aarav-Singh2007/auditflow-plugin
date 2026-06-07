@@ -38,6 +38,9 @@ class CoverageFixesTest {
         var alerts = detector.getAlerts(10);
         assertFalse(alerts.isEmpty(), "5th failed login should trigger alert");
         assertEquals(AnomalyDetector.AnomalyType.BRUTE_FORCE_LOGIN, alerts.get(0).type, "Alert type should be BRUTE_FORCE_LOGIN");
+        assertEquals("Multiple failed logins detected for \"test_user\" (5 attempts in 15 minutes).",
+            alerts.get(0).details,
+            "Alert details should use the operator-facing banner wording");
     }
 
     @Test
@@ -79,6 +82,24 @@ class CoverageFixesTest {
         var alerts = detector.getAlerts(1);
         assertEquals(1, alerts.size(), "Should return exactly 1 alert when limit is 1");
         assertEquals("user-two", alerts.get(0).user, "Should return the latest alert");
+    }
+
+    @Test
+    @WithJenkins
+    void testAnomalyDetectorCanTriggerAgainForSameUser(JenkinsRule j) {
+        AnomalyDetector detector = new AnomalyDetector();
+        AuditLoggerConfiguration config = createTestConfigWithAnomalyDetectionEnabled();
+
+        for (int i = 0; i < 5; i++) {
+            detector.analyze(new AuditLogEntry("repeat-user", "FAILED_LOGIN", "target", "details", 1_000L + i), config);
+        }
+        for (int i = 0; i < 5; i++) {
+            detector.analyze(new AuditLogEntry("repeat-user", "FAILED_LOGIN", "target", "details", 2_000L + i), config);
+        }
+
+        var alerts = detector.getAlerts(10);
+        assertEquals(2, alerts.size(), "Crossing the threshold again should generate another alert for the same user");
+        assertEquals("repeat-user", alerts.get(1).user, "The repeated alert should still identify the same user");
     }
 
 

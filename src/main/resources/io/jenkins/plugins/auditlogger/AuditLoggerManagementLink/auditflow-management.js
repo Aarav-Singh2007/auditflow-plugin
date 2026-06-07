@@ -16,14 +16,62 @@
     var defaultDateFrom = '';
     var defaultDateTo = '';
     var onboardingStorageKey = 'auditflow-onboarded';
-    var anomalyActions = [];
-    var anomalyDismissedKey = null; // Set dynamically using server's displayToday
+    var anomalyDismissedKey = 'auditflow-anomaly-dismissed-until';
     var anomalyDismissed = false;
+    var latestAnomaly = null;
 
     function setHidden(element, hidden) {
         if (element) {
             element.classList.toggle('jenkins-hidden', hidden);
         }
+    }
+
+    function parseAnomalyTimestamp(value) {
+        var timestamp = typeof value === 'number' ? value : parseInt(value, 10);
+        return isFinite(timestamp) && timestamp > 0 ? timestamp : 0;
+    }
+
+    function getLatestAnomaly(anomalies) {
+        var latest = null;
+        var latestTimestamp = 0;
+        if (!anomalies || anomalies.length === 0) {
+            return null;
+        }
+
+        for (var i = 0; i < anomalies.length; i++) {
+            var candidate = anomalies[i];
+            var candidateTimestamp = parseAnomalyTimestamp(candidate && candidate.timestamp);
+            if (!latest || candidateTimestamp >= latestTimestamp) {
+                latest = candidate;
+                latestTimestamp = candidateTimestamp;
+            }
+        }
+        return latest;
+    }
+
+    function refreshAnomalyDismissState(anomalies) {
+        latestAnomaly = getLatestAnomaly(anomalies);
+        if (!latestAnomaly) {
+            anomalyDismissed = false;
+            return;
+        }
+
+        var dismissedUntil = parseAnomalyTimestamp(sessionStorage.getItem(anomalyDismissedKey));
+        anomalyDismissed = dismissedUntil > 0
+            && parseAnomalyTimestamp(latestAnomaly.timestamp) <= dismissedUntil;
+    }
+
+    function formatAnomalyStatus(alert) {
+        if (!alert) {
+            return 'No anomaly detected';
+        }
+        if (alert.details) {
+            return alert.details;
+        }
+        if (alert.type === 'BRUTE_FORCE_LOGIN') {
+            return 'Multiple failed logins detected for "' + (alert.user || 'UNKNOWN') + '".';
+        }
+        return 'Anomaly detected.';
     }
 
     function getRootUrl() {
@@ -122,18 +170,14 @@
                 currentPage = data.page || currentPage;
                 displayTimeZone = data.displayTimeZone || 'UTC';
                 displayToday = data.displayToday || '';
-                
-                // Use server's displayToday for consistency with server-side dismissal tracking
-                anomalyDismissedKey = 'auditflow-anomaly-dismissed-' + displayToday;
-                anomalyDismissed = sessionStorage.getItem(anomalyDismissedKey) === 'true';
-                
+
                 // hey! grabbing our new alerts from Phase 2
                 var serverAnomalies = data.anomalies || [];
+                refreshAnomalyDismissState(serverAnomalies);
 
                 renderStats(currentSummary);
                 computeRiskPanel(currentSummary);
-                computeAnomalies(allLogs); // (this was the old client-side stuff)
-                
+
                 // show our new backend anomalies!
                 renderServerAnomalies(serverAnomalies);
                 
@@ -353,24 +397,20 @@
         }
     }
 
-    // old client-side anomaly detection. probably unused now
-    function computeAnomalies() {
-        anomalyActions = [];
-    }
-
     // displays our real backend anomalies
     function renderServerAnomalies(anomalies) {
         var box = document.getElementById('anomalyBox');
         var status = document.getElementById('anomalyStatus');
         if (!box || !status) return;
 
-        if (anomalies.length > 0 && !anomalyDismissed) {
-            var latest = anomalies[anomalies.length - 1];
+        var latest = getLatestAnomaly(anomalies);
+
+        if (latest && !anomalyDismissed) {
             box.classList.remove('jenkins-hidden');
             box.classList.add('anomaly-alert');
             box.classList.remove('anomaly-dismissed');
-            status.textContent = latest.type + ': ' + latest.details;
-        } else if (anomalies.length > 0 && anomalyDismissed) {
+            status.textContent = formatAnomalyStatus(latest);
+        } else if (latest && anomalyDismissed) {
             // Anomalies exist but user dismissed them
             box.classList.add('jenkins-hidden');
             box.classList.remove('anomaly-alert');
@@ -428,8 +468,8 @@
 
     function dismissAnomaly() {
         anomalyDismissed = true;
-        if (anomalyDismissedKey) {
-            sessionStorage.setItem(anomalyDismissedKey, 'true');
+        if (latestAnomaly) {
+            sessionStorage.setItem(anomalyDismissedKey, String(parseAnomalyTimestamp(latestAnomaly.timestamp)));
         }
         var box = document.getElementById('anomalyBox');
         var status = document.getElementById('anomalyStatus');
@@ -441,21 +481,6 @@
         if (status) {
             status.textContent = 'No anomaly detected';
         }
-        anomalyActions = [];
-    }
-
-    function investigateAnomalies() {
-        if (anomalyActions.length === 0) {
-            return;
-        }
-        var today = displayToday || formatDateForInput(getPresetBaseDate());
-        document.getElementById('dateFrom').value = today;
-        document.getElementById('dateTo').value = today;
-        document.getElementById('datePreset').value = 'today';
-        document.getElementById('searchText').value = '';
-        document.getElementById('filterAction').value = '';
-        document.getElementById('searchColumn').value = 'all';
-        loadLogs(true);
     }
 
     function severityBadgeClass(sev, action) {
@@ -736,11 +761,6 @@
         var dismissOnboardingButton = document.getElementById('dismissOnboardingButton');
         if (dismissOnboardingButton) {
             dismissOnboardingButton.addEventListener('click', dismissOnboarding);
-        }
-
-        var investigateButton = document.getElementById('btnInvestigate');
-        if (investigateButton) {
-            investigateButton.addEventListener('click', investigateAnomalies);
         }
 
         var dismissButton = document.getElementById('btnDismiss');
