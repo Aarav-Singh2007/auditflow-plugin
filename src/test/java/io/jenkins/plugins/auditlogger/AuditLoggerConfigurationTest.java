@@ -5,6 +5,7 @@ import jenkins.model.Jenkins;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import org.htmlunit.FailingHttpStatusCodeException;
+import org.htmlunit.html.HtmlPage;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.MockAuthorizationStrategy;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
@@ -130,6 +131,81 @@ class AuditLoggerConfigurationTest {
         configuration.setWebhookUrl("https://example.invalid/audit");
         assertTrue(configuration.isEnableWebhookAlerts());
         assertEquals("https://example.invalid/audit", configuration.getWebhookUrl());
+    }
+
+    @Test
+    void configureJsonSupportsOptionalBlockPayloads(JenkinsRule j) throws Exception {
+        AuditLoggerConfiguration configuration = new AuditLoggerConfiguration();
+        JSONObject json = new JSONObject();
+        JSONObject emailAlerts = new JSONObject();
+        JSONObject webhookAlerts = new JSONObject();
+        JSONObject failedLoginDetection = new JSONObject();
+        JSONObject dashboardStats = new JSONObject();
+
+        emailAlerts.put("alertEmailAddresses", "secops@example.com, admins@example.com");
+        webhookAlerts.put("webhookUrl", "https://hooks.slack.com/services/T000/B000/XXXX");
+        failedLoginDetection.put("anomalyFailedLoginsThreshold", 4);
+        failedLoginDetection.put("anomalyFailedLoginsWindowMinutes", 12);
+        dashboardStats.put("showMetricTotal", true);
+        dashboardStats.put("showMetricLogins", false);
+        dashboardStats.put("showMetricFailedLogins", true);
+        dashboardStats.put("showMetricBuilds", true);
+        dashboardStats.put("showMetricJobs", false);
+        dashboardStats.put("showMetricConfig", true);
+
+        json.put("enableEmailAlerts", emailAlerts);
+        json.put("enableWebhookAlerts", webhookAlerts);
+        json.put("anomalyFailedLogins", failedLoginDetection);
+        json.put("enableDashboardStats", dashboardStats);
+
+        configuration.configure((org.kohsuke.stapler.StaplerRequest2) null, json);
+
+        assertTrue(configuration.isEnableEmailAlerts());
+        assertEquals("secops@example.com, admins@example.com", configuration.getAlertEmailAddresses());
+        assertTrue(configuration.isEnableWebhookAlerts());
+        assertEquals("https://hooks.slack.com/services/T000/B000/XXXX", configuration.getWebhookUrl());
+        assertTrue(configuration.isAnomalyFailedLogins());
+        assertEquals(4, configuration.getAnomalyFailedLoginsThreshold());
+        assertEquals(12, configuration.getAnomalyFailedLoginsWindowMinutes());
+        assertTrue(configuration.isEnableDashboardStats());
+        assertTrue(configuration.isShowMetricTotal());
+        assertFalse(configuration.isShowMetricLogins());
+        assertTrue(configuration.isShowMetricFailedLogins());
+        assertTrue(configuration.isShowMetricBuilds());
+        assertFalse(configuration.isShowMetricJobs());
+        assertTrue(configuration.isShowMetricConfig());
+    }
+
+    @Test
+    void configurePageShowsPhaseOneSectionsAndWebhookGuidance(JenkinsRule j) throws Exception {
+        JenkinsRule.WebClient webClient = j.createWebClient();
+        HtmlPage page = webClient.goTo("configure");
+        String html = page.getWebResponse().getContentAsString();
+
+        assertTrue(html.contains("General"));
+        assertTrue(html.contains("System Change Monitoring"));
+        assertTrue(html.contains("Operational Monitoring"));
+        assertTrue(html.contains("Display Time Zone"));
+        assertTrue(html.contains("Notifications"));
+        assertTrue(html.contains("Anomaly Detection"));
+        assertTrue(html.contains("Export and API"));
+        assertTrue(html.contains("Advanced"));
+        assertTrue(html.contains("Enter a valid HTTP webhook endpoint"));
+        assertTrue(html.contains("https://hooks.slack.com/services/T000/B000/XXXX"));
+        assertTrue(html.contains("Configure anomaly rules such as authentication anomalies here"));
+        assertTrue(html.contains("Failed login anomaly detection"));
+        assertTrue(html.contains("Raise an alert for repeated failed logins on the same account."));
+
+        int operationalIndex = html.indexOf("Operational Monitoring");
+        int timeZoneIndex = html.indexOf("Display Time Zone");
+        int notificationsIndex = html.indexOf("Notifications");
+        int anomalyIndex = html.indexOf("Anomaly Detection");
+        int exportIndex = html.indexOf("Export and API");
+
+        assertTrue(operationalIndex < timeZoneIndex);
+        assertTrue(timeZoneIndex < notificationsIndex);
+        assertTrue(notificationsIndex < anomalyIndex);
+        assertTrue(anomalyIndex < exportIndex);
     }
 
     private static JSONObject findOption(JSONArray options, String id) {
