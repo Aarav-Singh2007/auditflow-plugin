@@ -329,8 +329,23 @@ MIT License.
 
 ## Version History
 
+### 82.v33a_7d14a_b_8e0
+The complete Anomaly Detection (AD) implementation in AuditFlow will be rolled out in multiple phases. Phase 1 has been released, with additional detection capabilities planned for future releases.
+Redesigned the configuration menu to provide a more compact, intuitive, and user-friendly experience.
+Reworked the anomaly alerting system, including enhanced Slack and email notification integration for improved reliability and usability.
+
+### 81.vb_2898ea_6a_fa_0
+Fix global config audit logging scope + simplify anomaly webhook configuration
+
 ### 79.v26fc29b_60494
 Introducing AD integration to Auditflow.
+
+### 78.ve83b_e50ed10d
+Bug-fix minor update
+
+### 77.v14979c87cb_b_f
+Bugfix bulk pluginsupdate
+Ban JUnit 4 imports credit:@strangelookingnerd
 
 ### 1.0.0
 - Initial public release
