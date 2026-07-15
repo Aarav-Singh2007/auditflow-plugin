@@ -20,7 +20,7 @@ import java.util.logging.Logger;
 public final class RequestHolder {
     private static final Logger LOGGER = Logger.getLogger(RequestHolder.class.getName());
     private static final ThreadLocal<HttpServletRequest> CURRENT = new ThreadLocal<>();
-    /** Authenticated username captured BEFORE chain.doFilter() — survives Jenkins SYSTEM impersonation. */
+    /** Authenticated username captured BEFORE chain.doFilter() - survives Jenkins SYSTEM impersonation. */
     private static final ThreadLocal<String> AUTHENTICATED_USER = new ThreadLocal<>();
 
     /**
@@ -69,7 +69,7 @@ public final class RequestHolder {
         return AUTHENTICATED_USER.get();
     }
 
-    /** Cache of user → last-known IP for resolving IPs in async contexts (build events). */
+    /** Cache of user -> last-known IP for resolving IPs in async contexts (build events). */
     private static final ConcurrentHashMap<String, String> USER_IP_CACHE = new ConcurrentHashMap<>();
     private static final int MAX_USER_IP_ENTRIES = 10_000;
 
@@ -100,7 +100,7 @@ public final class RequestHolder {
         if (PENDING_AUTH.size() >= MAX_PENDING_ENTRIES) {
             evictExpired();
             if (PENDING_AUTH.size() >= MAX_PENDING_ENTRIES) {
-                // Still full — force-flush the oldest entry
+                // Still full - force-flush the oldest entry
                 var it = PENDING_AUTH.entrySet().iterator();
                 if (it.hasNext()) {
                     var oldest = it.next();
@@ -118,7 +118,7 @@ public final class RequestHolder {
         PendingEntry pe = PENDING_AUTH.remove(username);
         if (pe == null) return null;
         if (pe.isExpired()) {
-            // Expired — write as-is without enrichment
+            // Expired - write as-is without enrichment
             return pe.entry;
         }
         return pe.entry;
@@ -148,7 +148,7 @@ public final class RequestHolder {
         while (it.hasNext()) {
             Map.Entry<String, PendingEntry> e = it.next();
             if (e.getValue().isExpired()) {
-                // Write to storage before evicting — never silently drop an audit event
+                // Write to storage before evicting - never silently drop an audit event
                 flushPendingEntry(e.getValue().entry);
                 it.remove();
             }

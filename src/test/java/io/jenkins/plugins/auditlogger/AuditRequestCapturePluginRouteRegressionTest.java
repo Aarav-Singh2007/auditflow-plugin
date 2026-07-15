@@ -61,6 +61,60 @@ class AuditRequestCapturePluginRouteRegressionTest {
     }
 
     @Test
+    void extractPluginTargetFromAdvancedUploadAndUrlBodies() {
+        String multipartUploadBody = """
+                ------WebKitFormBoundary
+                Content-Disposition: form-data; name="name"; filename="git-client.hpi"
+                Content-Type: application/octet-stream
+
+                binary
+                ------WebKitFormBoundary--
+                """;
+        String multipartUrlBody = """
+                ------WebKitFormBoundary
+                Content-Disposition: form-data; name="pluginUrl"
+
+                https://updates.jenkins.io/download/plugins/mailer/489.vd4b_25144138f/mailer.hpi
+                ------WebKitFormBoundary--
+                """;
+        String formBody = "pluginUrl=https%3A%2F%2Fupdates.jenkins.io%2Fdownload%2Fplugins%2Fgit%2F5.8.0%2Fgit.hpi";
+
+        assertEquals("git-client", AuditRequestCapture.extractPluginTargetFromRequestBody(multipartUploadBody));
+        assertEquals("mailer", AuditRequestCapture.extractPluginTargetFromRequestBody(multipartUrlBody));
+        assertEquals("git", AuditRequestCapture.extractPluginTargetFromRequestBody(formBody));
+    }
+
+    @Test
+    void normalizePluginTargetStripsVersionsPathsAndExtensions() {
+        assertEquals("git", AuditRequestCapture.normalizePluginTarget("git@5.8.0"));
+        assertEquals("mailer", AuditRequestCapture.normalizePluginTarget("https://updates.jenkins.io/download/plugins/mailer/489.vd4b_25144138f/mailer.hpi"));
+        assertEquals("credentials", AuditRequestCapture.normalizePluginTarget("C:/temp/credentials.jpi"));
+        assertEquals("git, mailer", AuditRequestCapture.normalizePluginTarget("git@5.8.0, mailer.hpi"));
+    }
+
+    @Test
+    void installClassificationPromotesAlreadyInstalledPluginsToUpdated() {
+        assertEquals("PLUGIN_UPDATED",
+                AuditRequestCapture.resolvePluginAction("PLUGIN_INSTALLED", "git", "git"::equals));
+        assertEquals("PLUGIN_INSTALLED",
+                AuditRequestCapture.resolvePluginAction("PLUGIN_INSTALLED", "mailer", "git"::equals));
+        assertEquals("PLUGIN_INSTALLED",
+                AuditRequestCapture.resolvePluginAction("PLUGIN_INSTALLED", "git, mailer", "git"::equals));
+        assertEquals("PLUGIN_UPDATED",
+                AuditRequestCapture.resolvePluginAction("PLUGIN_UPDATED", "git", plugin -> false));
+    }
+
+    @Test
+    void pluginActionDetailsUsePluralForMultipleTargets() {
+        assertEquals("Plugin installed: git by admin",
+                AuditRequestCapture.formatPluginActionDetails("PLUGIN_INSTALLED", "git", "admin"));
+        assertEquals("Plugins installed: git, mailer by admin",
+                AuditRequestCapture.formatPluginActionDetails("PLUGIN_INSTALLED", "git, mailer", "admin"));
+        assertEquals("Plugins updated: git, mailer by admin",
+                AuditRequestCapture.formatPluginActionDetails("PLUGIN_UPDATED", "git, mailer", "admin"));
+    }
+
+    @Test
     void configurationMatcherAcceptsSecuritySubmitRoute() {
         assertTrue(RouteAwareUrlMatcher.isConfigurationChange("/configure"));
         assertTrue(RouteAwareUrlMatcher.isConfigurationChange("/manage/configureSecurity"));
@@ -73,7 +127,32 @@ class AuditRequestCapturePluginRouteRegressionTest {
     void restartMatcherAcceptsPostInstallUpdateCenterRoute() {
         assertTrue(RouteAwareUrlMatcher.isRestartAction("/updateCenter/safeRestart"));
         assertTrue(RouteAwareUrlMatcher.isRestartAction("/updateCenter/restart"));
+        assertTrue(RouteAwareUrlMatcher.isRestartAction("/restart"));
+        assertTrue(RouteAwareUrlMatcher.isRestartAction("/manage/restart"));
+        assertTrue(RouteAwareUrlMatcher.isSafeRestartAction("/safeRestart"));
+        assertTrue(RouteAwareUrlMatcher.isSafeRestartAction("/manage/safeRestart"));
+        assertTrue(RouteAwareUrlMatcher.isSafeRestartAction("/updateCenter/safeRestart"));
+        assertFalse(RouteAwareUrlMatcher.isSafeRestartAction("/restart"));
         assertFalse(RouteAwareUrlMatcher.isRestartAction("/updateCenter/restartStatus"));
+    }
+
+    @Test
+    void restartAuditRequestAllowsUpdateCenterGetAndStandardPost() {
+        assertTrue(AuditRequestCapture.isRestartAuditRequest("POST", "/restart"));
+        assertTrue(AuditRequestCapture.isRestartAuditRequest("POST", "/safeRestart"));
+        assertTrue(AuditRequestCapture.isRestartAuditRequest("GET", "/updateCenter/restart"));
+        assertTrue(AuditRequestCapture.isRestartAuditRequest("GET", "/updateCenter/safeRestart"));
+        assertFalse(AuditRequestCapture.isRestartAuditRequest("GET", "/restart"));
+        assertFalse(AuditRequestCapture.isRestartAuditRequest("GET", "/manage/restart"));
+        assertFalse(AuditRequestCapture.isRestartAuditRequest("POST", "/updateCenter/restartStatus"));
+    }
+
+    @Test
+    void selectMeaningfulUserPrefersPreChainUserOverSystemFallback() {
+        assertEquals("harry", AuditRequestCapture.selectMeaningfulUser("harry", "SYSTEM"));
+        assertEquals("harry", AuditRequestCapture.selectMeaningfulUser(null, "harry"));
+        assertNull(AuditRequestCapture.selectMeaningfulUser("SYSTEM", null));
+        assertNull(AuditRequestCapture.selectMeaningfulUser("anonymous", "SYSTEM"));
     }
 
 }

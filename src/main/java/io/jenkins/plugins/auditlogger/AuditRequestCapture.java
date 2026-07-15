@@ -7,9 +7,17 @@ import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
+import java.net.URLDecoder;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Set;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
@@ -41,6 +49,12 @@ import net.sf.json.JSONObject;
 public class AuditRequestCapture {
     private static final Logger LOGGER = Logger.getLogger(AuditRequestCapture.class.getName());
     private static final String CACHED_REQUEST_BODY_ATTR = AuditRequestCapture.class.getName() + ".cachedRequestBody";
+    private static final String RESTART_AUDIT_LOGGED_ATTR = AuditRequestCapture.class.getName() + ".restartAuditLogged";
+    private static final Pattern MULTIPART_FILE_NAME_PATTERN =
+            Pattern.compile("filename=\"([^\"]+)\"", Pattern.CASE_INSENSITIVE);
+    private static final Pattern MULTIPART_FIELD_PATTERN =
+            Pattern.compile("name=\"(?:pluginName|pluginUrl|url|name)\"\\s*\\r?\\n\\r?\\n([^\\r\\n]+)",
+                    Pattern.CASE_INSENSITIVE);
     private static volatile boolean registered = false;
 
     @Initializer(after = InitMilestone.STARTED)
@@ -58,7 +72,13 @@ public class AuditRequestCapture {
                 @Override
                 public void requestInitialized(ServletRequestEvent sre) {
                     if (sre.getServletRequest() instanceof HttpServletRequest) {
-                        RequestHolder.set((HttpServletRequest) sre.getServletRequest());
+                        HttpServletRequest req = (HttpServletRequest) sre.getServletRequest();
+                        RequestHolder.set(req);
+                        String preChainUser = resolveUsername(req);
+                        if (preChainUser != null) {
+                            RequestHolder.setAuthenticatedUser(preChainUser);
+                        }
+                        captureRestartAction(req, preChainUser);
                     }
                 }
 
@@ -105,6 +125,7 @@ public class AuditRequestCapture {
                         if (preChainUser != null) {
                             RequestHolder.setAuthenticatedUser(preChainUser);
                         }
+                        captureRestartAction(effectiveReq, preChainUser);
                     }
                     try {
                         chain.doFilter(effectiveReq != null ? effectiveReq : req, res);
@@ -168,7 +189,7 @@ public class AuditRequestCapture {
             boolean pluginEventsEnabled = config == null || config.isEnablePluginEvents();
             boolean systemConfigEventsEnabled = config != null && config.isEnableSystemConfigEvents();
 
-            String username = resolveUsername(req);
+            String username = selectMeaningfulUser(RequestHolder.getAuthenticatedUser(), resolveUsername(req));
             if (username == null) username = "anonymous";
 
             String action = null;
@@ -177,23 +198,25 @@ public class AuditRequestCapture {
             String severity = "HIGH";
 
             // ===== RESTART (route-aware matching) =====
-            // Now prevents bypass via /static/lol/restart or /job/restart
-            if ("POST".equalsIgnoreCase(method) && RouteAwareUrlMatcher.isRestartAction(uri)) {
+            if (systemConfigEventsEnabled
+                    && !Boolean.TRUE.equals(req.getAttribute(RESTART_AUDIT_LOGGED_ATTR))
+                    && isRestartAuditRequest(method, uri)) {
                 action = "SYSTEM_RESTART";
                 target = "Jenkins";
-                boolean isSafe = uri.contains("safe");
+                boolean isSafe = RouteAwareUrlMatcher.isSafeRestartAction(uri);
                 details = (isSafe ? "Safe" : "Immediate") + " restart initiated by " + username;
                 severity = "CRITICAL";
             }
             // ===== PLUGIN OPERATIONS (route-aware matching) =====
             if (pluginEventsEnabled && "POST".equalsIgnoreCase(method) && RouteAwareUrlMatcher.isPluginManagerAction(uri)) {
                 String pluginAction = classifyPluginAction(uri);
-                if ("PLUGIN_INSTALLED".equals(pluginAction)) {
+                if ("PLUGIN_INSTALLED".equals(pluginAction) || "PLUGIN_UPDATED".equals(pluginAction)) {
                     String pluginTarget = extractPluginTarget(req, uri);
+                    String resolvedPluginAction = resolvePluginAction(pluginAction, pluginTarget, AuditRequestCapture::isInstalledPlugin);
                     if (pluginTarget != null) {
-                        action = "PLUGIN_INSTALLED";
+                        action = resolvedPluginAction;
                         target = pluginTarget;
-                        details = "Plugin installed: " + target + " by " + username;
+                        details = formatPluginActionDetails(resolvedPluginAction, target, username);
                     }
                 } else if ("PLUGIN_REMOVED".equals(pluginAction)) {
                     action = "PLUGIN_REMOVED";
@@ -201,13 +224,6 @@ public class AuditRequestCapture {
                     if (target == null) target = "unknown-plugin";
                     details = "Plugin removed: " + target + " by " + username;
                     severity = "CRITICAL";
-                } else if ("PLUGIN_UPDATED".equals(pluginAction)) {
-                    String pluginTarget = extractPluginTarget(req, uri);
-                    if (pluginTarget != null) {
-                        action = "PLUGIN_UPDATED";
-                        target = pluginTarget;
-                        details = "Plugin updated: " + target + " by " + username;
-                    }
                 } else if ("PLUGIN_ENABLED".equals(pluginAction) || "PLUGIN_DISABLED".equals(pluginAction)) {
                     action = pluginAction;
                     boolean enable = "PLUGIN_ENABLED".equals(pluginAction);
@@ -230,11 +246,14 @@ public class AuditRequestCapture {
                     severity = "HIGH";
                 }
             }
-
             if (action != null) {
                 AuditLogEntry entry = new AuditLogEntry(username, action, target, details);
                 entry.setSeverity(severity);
-                AuditLogStorage.getInstance().addEntry(entry);
+                AuditLogStorage storage = AuditLogStorage.getInstance();
+                storage.addEntry(entry);
+                if ("SYSTEM_RESTART".equals(action)) {
+                    storage.flushNow();
+                }
                 LOGGER.log(Level.INFO, "{0}: target={1} by user={2}",
                         new Object[]{action, target, username});
             }
@@ -251,13 +270,16 @@ public class AuditRequestCapture {
             // For /pluginManager/installPlugins, plugins are sent as a JSON array body
             String name = req.getParameter("pluginName");
             if (name == null) name = req.getParameter("name");
-            if (name != null) return name;
+            if (name == null) name = req.getParameter("pluginUrl");
+            if (name == null) name = req.getParameter("url");
+            String normalizedName = normalizePluginTarget(name);
+            if (normalizedName != null) return normalizedName;
 
-            String pluginsFromBody = extractPluginTargetFromJsonBody((String) req.getAttribute(CACHED_REQUEST_BODY_ATTR));
+            String pluginsFromBody = extractPluginTargetFromRequestBody((String) req.getAttribute(CACHED_REQUEST_BODY_ATTR));
             if (pluginsFromBody != null) return pluginsFromBody;
 
             // Jenkins sends plugin selections as plugin.{name}.default=on
-            java.util.Enumeration<String> paramNames = req.getParameterNames();
+            Enumeration<String> paramNames = req.getParameterNames();
             if (paramNames != null) {
                 StringBuilder plugins = new StringBuilder();
                 while (paramNames.hasMoreElements()) {
@@ -271,10 +293,22 @@ public class AuditRequestCapture {
                 }
                 if (plugins.length() > 0) return plugins.toString();
             }
-            // For upload: filename from multipart
-            if (uri.contains("upload")) return "uploaded-plugin";
         } catch (Exception ignored) {}
         return null;
+    }
+
+    static String extractPluginTargetFromRequestBody(String requestBody) {
+        String pluginsFromJson = extractPluginTargetFromJsonBody(requestBody);
+        if (pluginsFromJson != null) {
+            return pluginsFromJson;
+        }
+
+        String multipartTarget = extractPluginTargetFromMultipartBody(requestBody);
+        if (multipartTarget != null) {
+            return multipartTarget;
+        }
+
+        return extractPluginTargetFromFormBody(requestBody);
     }
 
     static String extractPluginTargetFromJsonBody(String requestBody) {
@@ -294,7 +328,10 @@ public class AuditRequestCapture {
                 if (plugin == null) {
                     continue;
                 }
-                String name = plugin.toString();
+                String name = plugin instanceof JSONObject pluginObject
+                        ? pluginObject.optString("name", pluginObject.optString("shortName", plugin.toString()))
+                        : plugin.toString();
+                name = normalizeSinglePluginToken(name);
                 if (name.isBlank()) {
                     continue;
                 }
@@ -309,6 +346,56 @@ public class AuditRequestCapture {
             LOGGER.log(Level.FINE, "Failed to parse plugin install request body", e);
             return null;
         }
+    }
+
+    private static String extractPluginTargetFromMultipartBody(String requestBody) {
+        if (requestBody == null || requestBody.isBlank()) {
+            return null;
+        }
+
+        Matcher fileMatcher = MULTIPART_FILE_NAME_PATTERN.matcher(requestBody);
+        if (fileMatcher.find()) {
+            String normalized = normalizePluginTarget(fileMatcher.group(1));
+            if (normalized != null) {
+                return normalized;
+            }
+        }
+
+        Matcher fieldMatcher = MULTIPART_FIELD_PATTERN.matcher(requestBody);
+        while (fieldMatcher.find()) {
+            String normalized = normalizePluginTarget(fieldMatcher.group(1));
+            if (normalized != null) {
+                return normalized;
+            }
+        }
+        return null;
+    }
+
+    private static String extractPluginTargetFromFormBody(String requestBody) {
+        if (requestBody == null || requestBody.isBlank()) {
+            return null;
+        }
+
+        try {
+            String decodedBody = URLDecoder.decode(requestBody, StandardCharsets.UTF_8);
+            for (String pair : decodedBody.split("&")) {
+                if (pair.isBlank()) {
+                    continue;
+                }
+                int separatorIndex = pair.indexOf('=');
+                String key = separatorIndex >= 0 ? pair.substring(0, separatorIndex) : pair;
+                String value = separatorIndex >= 0 ? pair.substring(separatorIndex + 1) : "";
+                if ("pluginName".equals(key) || "name".equals(key) || "pluginUrl".equals(key) || "url".equals(key)) {
+                    String normalized = normalizePluginTarget(value);
+                    if (normalized != null) {
+                        return normalized;
+                    }
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            LOGGER.log(Level.FINE, "Failed to decode plugin install form body", e);
+        }
+        return null;
     }
 
     static boolean isPluginInstallUri(String uri) {
@@ -344,6 +431,164 @@ public class AuditRequestCapture {
     static String extractPluginNameFromUri(String uri) {
         String name = RouteAwareUrlMatcher.extractPluginName(uri);
         return name != null ? name : "unknown-plugin";
+    }
+
+    static String resolvePluginAction(String pluginAction, String pluginTarget, Predicate<String> installedPluginLookup) {
+        if (!"PLUGIN_INSTALLED".equals(pluginAction) || pluginTarget == null || installedPluginLookup == null) {
+            return pluginAction;
+        }
+
+        boolean sawTarget = false;
+        for (String token : pluginTarget.split("\\s*,\\s*")) {
+            String normalized = normalizeSinglePluginToken(token);
+            if (normalized.isBlank()) {
+                continue;
+            }
+            sawTarget = true;
+            if (!installedPluginLookup.test(normalized)) {
+                return "PLUGIN_INSTALLED";
+            }
+        }
+        return sawTarget ? "PLUGIN_UPDATED" : pluginAction;
+    }
+
+    static String normalizePluginTarget(String rawTarget) {
+        if (rawTarget == null || rawTarget.isBlank()) {
+            return null;
+        }
+
+        Set<String> normalizedTargets = new LinkedHashSet<>();
+        for (String token : rawTarget.split("\\s*,\\s*")) {
+            String normalized = normalizeSinglePluginToken(token);
+            if (!normalized.isBlank()) {
+                normalizedTargets.add(normalized);
+            }
+        }
+        if (normalizedTargets.isEmpty()) {
+            return null;
+        }
+        return String.join(", ", normalizedTargets);
+    }
+
+    static String formatPluginActionDetails(String pluginAction, String pluginTarget, String username) {
+        boolean multiplePlugins = pluginTarget != null && pluginTarget.contains(",");
+        String noun = multiplePlugins ? "Plugins" : "Plugin";
+        String verb = "PLUGIN_UPDATED".equals(pluginAction) ? "updated" : "installed";
+        return noun + " " + verb + ": " + pluginTarget + " by " + username;
+    }
+
+    static void captureRestartAction(HttpServletRequest req, String preferredUsername) {
+        try {
+            if (req == null || Boolean.TRUE.equals(req.getAttribute(RESTART_AUDIT_LOGGED_ATTR))) {
+                return;
+            }
+
+            String method = req.getMethod();
+            String uri = req.getRequestURI();
+            if (uri == null) {
+                return;
+            }
+
+            String ctx = req.getContextPath();
+            if (ctx != null && !ctx.isEmpty() && uri.startsWith(ctx)) {
+                uri = uri.substring(ctx.length());
+            }
+
+            AuditLoggerConfiguration config = AuditLoggerConfiguration.get();
+            if (config == null || !config.isEnableSystemConfigEvents() || !isRestartAuditRequest(method, uri)) {
+                return;
+            }
+
+            String username = selectMeaningfulUser(preferredUsername, resolveUsername(req));
+            if (username == null) {
+                username = "anonymous";
+            }
+
+            boolean isSafe = RouteAwareUrlMatcher.isSafeRestartAction(uri);
+            String details = (isSafe ? "Safe" : "Immediate") + " restart initiated by " + username;
+            AuditLogEntry entry = new AuditLogEntry(username, "SYSTEM_RESTART", "Jenkins", details);
+            entry.setSeverity("CRITICAL");
+
+            AuditLogStorage storage = AuditLogStorage.getInstance();
+            storage.addEntry(entry);
+            storage.flushNow();
+            req.setAttribute(RESTART_AUDIT_LOGGED_ATTR, Boolean.TRUE);
+
+            LOGGER.log(Level.INFO, "{0}: target={1} by user={2}",
+                    new Object[]{"SYSTEM_RESTART", "Jenkins", username});
+        } catch (Exception e) {
+            LOGGER.log(Level.FINE, "Error capturing restart action", e);
+        }
+    }
+
+    static boolean isRestartAuditRequest(String method, String uri) {
+        if (method == null || !RouteAwareUrlMatcher.isRestartAction(uri)) {
+            return false;
+        }
+        if ("POST".equalsIgnoreCase(method)) {
+            return true;
+        }
+        return "GET".equalsIgnoreCase(method)
+                && ("/updateCenter/restart".equals(uri) || "/updateCenter/safeRestart".equals(uri));
+    }
+
+    static String selectMeaningfulUser(String primary, String secondary) {
+        if (isMeaningfulUser(primary)) {
+            return primary;
+        }
+        return isMeaningfulUser(secondary) ? secondary : null;
+    }
+
+    private static String normalizeSinglePluginToken(String rawToken) {
+        if (rawToken == null) {
+            return "";
+        }
+
+        String token = rawToken.trim();
+        if (token.isEmpty()) {
+            return "";
+        }
+
+        if (token.contains("://")) {
+            int queryIndex = token.indexOf('?');
+            if (queryIndex >= 0) {
+                token = token.substring(0, queryIndex);
+            }
+            int hashIndex = token.indexOf('#');
+            if (hashIndex >= 0) {
+                token = token.substring(0, hashIndex);
+            }
+            int slashIndex = token.lastIndexOf('/');
+            if (slashIndex >= 0 && slashIndex + 1 < token.length()) {
+                token = token.substring(slashIndex + 1);
+            }
+        } else {
+            token = token.replace('\\', '/');
+            int slashIndex = token.lastIndexOf('/');
+            if (slashIndex >= 0 && slashIndex + 1 < token.length()) {
+                token = token.substring(slashIndex + 1);
+            }
+        }
+
+        int atIndex = token.indexOf('@');
+        if (atIndex > 0) {
+            token = token.substring(0, atIndex);
+        }
+        int colonIndex = token.indexOf(':');
+        if (colonIndex > 0 && token.indexOf("://") < 0) {
+            token = token.substring(0, colonIndex);
+        }
+        if (token.endsWith(".jpi") || token.endsWith(".hpi")) {
+            token = token.substring(0, token.length() - 4);
+        }
+        return token.trim();
+    }
+
+    private static boolean isInstalledPlugin(String shortName) {
+        Jenkins jenkins = Jenkins.getInstanceOrNull();
+        return jenkins != null
+                && jenkins.getPluginManager() != null
+                && jenkins.getPluginManager().getPlugin(shortName) != null;
     }
 
     /**
@@ -408,14 +653,12 @@ public class AuditRequestCapture {
         } catch (ReflectiveOperationException | RuntimeException ignored) {}
         // 2. Try getRemoteUser()
         String remoteUser = req.getRemoteUser();
-        if (remoteUser != null && !remoteUser.isEmpty()
-                && !"anonymous".equalsIgnoreCase(remoteUser)) {
+        if (isMeaningfulUser(remoteUser)) {
             return remoteUser;
         }
         // 3. Try getUserPrincipal()
         Principal p = req.getUserPrincipal();
-        if (p != null && p.getName() != null && !p.getName().isEmpty()
-                && !"anonymous".equalsIgnoreCase(p.getName())) {
+        if (p != null && isMeaningfulUser(p.getName())) {
             return p.getName();
         }
         // 4. Try thread-local Spring SecurityContext
@@ -428,6 +671,14 @@ public class AuditRequestCapture {
             return auth.getName();
         }
         return null;
+    }
+
+    private static boolean isMeaningfulUser(String username) {
+        return username != null
+                && !username.isEmpty()
+                && !"anonymous".equalsIgnoreCase(username)
+                && !"anonymousUser".equalsIgnoreCase(username)
+                && !"SYSTEM".equalsIgnoreCase(username);
     }
 
     private static HttpServletRequest cacheRequestBody(HttpServletRequest request) throws IOException {
