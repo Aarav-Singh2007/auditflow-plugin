@@ -22,7 +22,7 @@ public class AuditLogEntry implements Serializable {
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneOffset.UTC);
     private static final DateTimeFormatter READABLE_FMT =
             DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm:ss").withZone(ZoneOffset.UTC);
-        private static final Map<String, DateTimeFormatter> READABLE_FORMATTERS = new ConcurrentHashMap<>();
+    private static final Map<String, DateTimeFormatter> READABLE_FORMATTERS = new ConcurrentHashMap<>();
 
     private final long timestamp;
     private final String username;
@@ -127,29 +127,51 @@ public class AuditLogEntry implements Serializable {
         return "unknown";
     }
 
+    /**
+     * Strict 5-tier severity derivation schema:
+     * - CRITICAL (Red #ef4444): Failed logins, system restarts, agent launch failures, security breaches
+     * - HIGH (Dark Orange #f97316): Deletions, offline events, build failures, build aborts
+     * - MEDIUM (Amber #f59e0b): Configuration changes, job updates, node updates, credential updates
+     * - LOW (Green #10b981): Successful authentications, node online, build success
+     * - INFO (Blue #3b82f6): Informational creation events, job created, node created, build started
+     */
     private static String deriveSeverity(String action) {
         if (action == null) return "INFO";
-        // CRITICAL: security-breaking or irreversible actions
-        if (action.contains("FAILED") || action.contains("DENIED") || action.contains("RESTART")
-                || action.contains("SECURITY_CONFIG")
-                || "CREDENTIAL_DELETED".equals(action) || "CREDENTIAL_CREATED".equals(action)
-                || "JOB_DELETED".equals(action) || "BUILDS_PURGED".equals(action)
-                || "AUTH_STRATEGY_CHANGED".equals(action) || "PLUGIN_REMOVED".equals(action)) return "CRITICAL";
-        // HIGH: impactful changes requiring attention
-        if (action.contains("DELETE") || action.contains("CREDENTIAL")
-                || "BUILD_FAILED".equals(action) || "BUILD_ABORTED".equals(action)
-                || "GLOBAL_CONFIG_UPDATED".equals(action)
-                || "PLUGIN_DISABLED".equals(action) || "PLUGIN_ENABLED".equals(action)) return "HIGH";
-        // MEDIUM: authentication and config changes
-        if (action.contains("LOGIN") || action.contains("LOGOUT") || action.contains("AUTH")
-                || "SESSION_TERMINATED".equals(action)) return "MEDIUM";
-        if (action.contains("CONFIG") || action.contains("PLUGIN")) return "MEDIUM";
-        // LOW: routine build and creation events
-        if (action.contains("BUILD") || action.contains("CREATED")) return "LOW";
+        String u = action.toUpperCase();
+
+        // 1. CRITICAL: Security failures, failed logins, system restarts, launch failures
+        if (u.contains("FAILED_LOGIN") || u.contains("LOGIN_FAILED") || u.contains("DENIED") || u.contains("RESTART")
+                || u.contains("SECURITY_CONFIG") || "NODE_LAUNCH_FAILURE".equals(u) || "AUTH_STRATEGY_CHANGED".equals(u)) {
+            return "CRITICAL";
+        }
+
+        // 2. HIGH: Impactful/destructive actions (deletions, offline agents, failed/aborted builds)
+        if (u.contains("DELETED") || u.contains("DELETE") || u.contains("OFFLINE")
+                || "BUILD_FAILURE".equals(u) || "BUILD_FAILED".equals(u) || "BUILD_ABORTED".equals(u)) {
+            return "HIGH";
+        }
+
+        // 3. MEDIUM: Configuration updates and status warnings
+        if (u.contains("UPDATED") || u.contains("CONFIG") || u.contains("RENAMED")
+                || u.contains("PLUGIN") || "BUILD_UNSTABLE".equals(u)) {
+            return "MEDIUM";
+        }
+
+        // 4. LOW: Successful logins, node brought online, successful builds
+        if (u.contains("LOGIN") || u.contains("LOGOUT") || u.contains("AUTH")
+                || "NODE_ONLINE".equals(u) || "BUILD_SUCCESS".equals(u)) {
+            return "LOW";
+        }
+
+        // 5. INFO: Routine creation and start events
+        if (u.contains("CREATED") || u.contains("COPIED") || u.contains("STARTED") || "SESSION_TIMEOUT".equals(u)) {
+            return "INFO";
+        }
+
         return "INFO";
     }
 
-    // --- Getters (all fields are effectively final after construction + factory) ---
+    // --- Getters ---
 
     public long getTimestamp()      { return timestamp; }
     public String getUsername()     { return username; }
@@ -163,7 +185,7 @@ public class AuditLogEntry implements Serializable {
     public String getUserAgent()   { return userAgent; }
     public String getSeverity()    { return severity; }
 
-    // --- Setters (used only during entry construction, before stored) ---
+    // --- Setters ---
 
     public void setSourceIp(String sourceIp)      { this.sourceIp = sourceIp; }
     public void setAuthMethod(String authMethod)   { this.authMethod = authMethod; }
