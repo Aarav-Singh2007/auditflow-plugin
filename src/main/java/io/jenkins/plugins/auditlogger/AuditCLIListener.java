@@ -46,8 +46,9 @@ public class AuditCLIListener implements CLIListener {
     }
 
     private String resolveCurrentUser(CLIContext context) {
-        if (context.getAuth() != null) {
-            String name = context.getAuth().getName();
+        var auth = context.getAuth();
+        if (auth != null) {
+            String name = auth.getName();
             if (name != null && !name.isEmpty() && !"anonymousUser".equals(name) && !"anonymous".equalsIgnoreCase(name)) {
                 return name;
             }
