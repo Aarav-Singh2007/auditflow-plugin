@@ -1,26 +1,27 @@
 package io.jenkins.plugins.auditlogger;
 
-import hudson.Extension;
-import hudson.XmlFile;
-import hudson.model.Job;
-import hudson.model.Run;
-import hudson.model.Fingerprint;
-import hudson.model.Saveable;
-import hudson.model.User;
-import hudson.model.listeners.SaveableListener;
-import jenkins.model.Jenkins;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
-import org.kohsuke.stapler.Stapler;
 import java.lang.reflect.Method;
 import java.security.Principal;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.kohsuke.stapler.Stapler;
+
+import hudson.Extension;
+import hudson.XmlFile;
+import hudson.model.Fingerprint;
+import hudson.model.Job;
+import hudson.model.Run;
+import hudson.model.Saveable;
+import hudson.model.User;
+import hudson.model.listeners.SaveableListener;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import jenkins.model.Jenkins;
 
 /**
  * Configuration change listener: tracks saves to jobs, users, system settings, and credentials.
@@ -35,10 +36,9 @@ public class AuditSaveableListener extends SaveableListener {
             "io.jenkins.plugins.thememanager.ThemeUserProperty"
     );
 
-    /** Cache of known credential IDs per store class name, for detecting create/delete. */
+   
     private static final Map<String, Set<String>> credentialCache = new ConcurrentHashMap<>();
 
-    /** Cache of credential hash codes per store, for detecting which credential was modified. */
     private static final Map<String, Map<String, Integer>> credentialHashCache = new ConcurrentHashMap<>();
 
     static void primeCredentialCaches() {
@@ -74,7 +74,6 @@ public class AuditSaveableListener extends SaveableListener {
             AuditLoggerConfiguration config = AuditLoggerConfiguration.get();
             if (config == null) return;
 
-            // Credential store changes are audit-critical — always log, bypass grace period
             if (isCredentialStore(o)) {
                 if (config.isEnableCredentialEvents()) {
                     logCredentialChange(o, file);
@@ -82,14 +81,12 @@ public class AuditSaveableListener extends SaveableListener {
                 return;
             }
 
-            // Node lifecycle events are captured by AuditNodeListener — ignore here to prevent
-            // duplicate or misclassified GLOBAL_CONFIG_UPDATED events for agent saves.
+            
             if (o instanceof hudson.model.Node) {
                 return;
             }
 
-            // Suppress runtime build execution saveables (WorkflowRun, Run, Fingerprint, FlowNode) —
-            // build events are captured by AuditRunListener and shouldn't pollute global system config logs.
+           
             if (isRuntimeBuildSaveable(o)) {
                 return;
             }
@@ -114,33 +111,38 @@ public class AuditSaveableListener extends SaveableListener {
                 return;
             }
 
-            String username = currentUser();
+            String action;
+            String target;
 
-            // Suppress non-real user (SYSTEM) background saves (e.g. nextBuildNumber updates on build start, automated background job/system saves)
+            if (isJob) {
+                action = "JOB_CONFIG_UPDATED";
+                target = ((Job<?, ?>) o).getFullName();
+            } else if (isUser) {
+                action = "USER_CONFIG_UPDATED";
+                target = ((User) o).getId();
+            } else {
+                action = "GLOBAL_CONFIG_UPDATED";
+                target = o.getClass().getSimpleName();
+            }
+
+            String username = currentUser(target);
+
+            
             if (!isRealUser(username)) {
                 LOGGER.log(Level.FINE, "Suppressing non-real user config save: {0}", o.getClass().getSimpleName());
                 return;
             }
 
-            String action;
-            String target;
             String details;
-
             if (isJob) {
-                action = "JOB_CONFIG_UPDATED";
-                target = ((Job<?, ?>) o).getFullName();
                 details = String.format("Job configuration modified: %s by %s", target, username);
             } else if (isUser) {
-                action = "USER_CONFIG_UPDATED";
-                target = ((User) o).getId();
                 details = String.format("User profile updated: %s by %s", target, username);
             } else {
-                action = "GLOBAL_CONFIG_UPDATED";
-                target = o.getClass().getSimpleName();
                 details = String.format("Global system configuration updated: %s by %s", target, username);
             }
 
-            // Deduplicate: Jenkins often calls save() multiple times in quick succession for a single save form submit
+            
             String duplicateKey = action + ":" + target;
             if (StartupPhaseManager.wasRecentlyLogged(duplicateKey)) {
                 LOGGER.log(Level.FINE, "Skipping duplicate save log for: {0}", duplicateKey);
@@ -206,8 +208,8 @@ public class AuditSaveableListener extends SaveableListener {
 
     private void logCredentialChange(Saveable o, XmlFile file) {
         try {
-            String username = currentUser();
             String storeName = o.getClass().getSimpleName();
+            String username = currentUser(storeName);
 
             // Extract set of all credential IDs in this store currently
             Set<String> currentIds = extractCredentialIdSet(o);
@@ -457,7 +459,7 @@ public class AuditSaveableListener extends SaveableListener {
         return modified;
     }
 
-    private static String currentUser() {
+    private static String currentUser(String affectedObject) {
         // 0. Try Basic Auth header from HTTP request
         try {
             HttpServletRequest req = RequestHolder.get();
@@ -481,12 +483,17 @@ public class AuditSaveableListener extends SaveableListener {
         try {
             HttpServletRequest request = RequestHolder.get();
             if (request != null) {
-                HttpSession session = request.getSession(false);
-                if (session != null) {
-                    String sessionUser = extractUserFromSession(session);
+                if (request.getSession(false) != null) {
+                    String sessionUser = extractUserFromSession(request.getSession(false));
                     if (isRealUser(sessionUser)) {
                         return sessionUser;
                     }
+                }
+                String authHeader = request.getHeader("Authorization");
+                if (authHeader != null && authHeader.startsWith("Basic ")) {
+                    String decoded = new String(java.util.Base64.getDecoder().decode(authHeader.substring(6)), java.nio.charset.StandardCharsets.UTF_8);
+                    String username = decoded.contains(":") ? decoded.substring(0, decoded.indexOf(':')) : decoded;
+                    if (isRealUser(username)) return username;
                 }
                 if (isRealUser(request.getRemoteUser())) {
                     return request.getRemoteUser();
@@ -538,6 +545,15 @@ public class AuditSaveableListener extends SaveableListener {
                 return authentication.getName();
             }
         } catch (RuntimeException ignored) {}
+
+        // 6. Last resort: check if a recent CLI command correlates with this background event
+        if (affectedObject != null) {
+            String cliUser = AsyncActionTracker.getInstance().resolveUser(affectedObject, System.currentTimeMillis());
+            if (cliUser != null) {
+                LOGGER.log(Level.FINE, "currentUser from AsyncActionTracker for {0}: {1}", new Object[]{affectedObject, cliUser});
+                return cliUser;
+            }
+        }
 
         return "SYSTEM";
     }
