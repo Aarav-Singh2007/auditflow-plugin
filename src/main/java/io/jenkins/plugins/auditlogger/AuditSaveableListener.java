@@ -1,26 +1,27 @@
 package io.jenkins.plugins.auditlogger;
 
-import hudson.Extension;
-import hudson.XmlFile;
-import hudson.model.Job;
-import hudson.model.Run;
-import hudson.model.Fingerprint;
-import hudson.model.Saveable;
-import hudson.model.User;
-import hudson.model.listeners.SaveableListener;
-import jenkins.model.Jenkins;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
-import org.kohsuke.stapler.Stapler;
 import java.lang.reflect.Method;
 import java.security.Principal;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.kohsuke.stapler.Stapler;
+
+import hudson.Extension;
+import hudson.XmlFile;
+import hudson.model.Fingerprint;
+import hudson.model.Job;
+import hudson.model.Run;
+import hudson.model.Saveable;
+import hudson.model.User;
+import hudson.model.listeners.SaveableListener;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import jenkins.model.Jenkins;
 
 /**
  * Configuration change listener: tracks saves to jobs, users, system settings, and credentials.
@@ -35,10 +36,9 @@ public class AuditSaveableListener extends SaveableListener {
             "io.jenkins.plugins.thememanager.ThemeUserProperty"
     );
 
-    /** Cache of known credential IDs per store class name, for detecting create/delete. */
+   
     private static final Map<String, Set<String>> credentialCache = new ConcurrentHashMap<>();
 
-    /** Cache of credential hash codes per store, for detecting which credential was modified. */
     private static final Map<String, Map<String, Integer>> credentialHashCache = new ConcurrentHashMap<>();
 
     static void primeCredentialCaches() {
@@ -74,7 +74,6 @@ public class AuditSaveableListener extends SaveableListener {
             AuditLoggerConfiguration config = AuditLoggerConfiguration.get();
             if (config == null) return;
 
-            // Credential store changes are audit-critical — always log, bypass grace period
             if (isCredentialStore(o)) {
                 if (config.isEnableCredentialEvents()) {
                     logCredentialChange(o, file);
@@ -82,14 +81,12 @@ public class AuditSaveableListener extends SaveableListener {
                 return;
             }
 
-            // Node lifecycle events are captured by AuditNodeListener — ignore here to prevent
-            // duplicate or misclassified GLOBAL_CONFIG_UPDATED events for agent saves.
+            
             if (o instanceof hudson.model.Node) {
                 return;
             }
 
-            // Suppress runtime build execution saveables (WorkflowRun, Run, Fingerprint, FlowNode) —
-            // build events are captured by AuditRunListener and shouldn't pollute global system config logs.
+           
             if (isRuntimeBuildSaveable(o)) {
                 return;
             }
@@ -130,7 +127,7 @@ public class AuditSaveableListener extends SaveableListener {
 
             String username = currentUser(target);
 
-            // Suppress non-real user (SYSTEM) background saves (e.g. nextBuildNumber updates on build start, automated background job/system saves)
+            
             if (!isRealUser(username)) {
                 LOGGER.log(Level.FINE, "Suppressing non-real user config save: {0}", o.getClass().getSimpleName());
                 return;
@@ -145,7 +142,7 @@ public class AuditSaveableListener extends SaveableListener {
                 details = String.format("Global system configuration updated: %s by %s", target, username);
             }
 
-            // Deduplicate: Jenkins often calls save() multiple times in quick succession for a single save form submit
+            
             String duplicateKey = action + ":" + target;
             if (StartupPhaseManager.wasRecentlyLogged(duplicateKey)) {
                 LOGGER.log(Level.FINE, "Skipping duplicate save log for: {0}", duplicateKey);

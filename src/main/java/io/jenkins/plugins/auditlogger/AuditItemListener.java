@@ -1,16 +1,17 @@
 package io.jenkins.plugins.auditlogger;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import org.kohsuke.stapler.Stapler;
+
 import hudson.Extension;
 import hudson.model.Item;
 import hudson.model.User;
 import hudson.model.listeners.ItemListener;
-import org.kohsuke.stapler.Stapler;
-
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
- * Job lifecycle listener: created, deleted, updated, renamed, copied, moved.
+ * Job lifecycle listener it created, deleted, updated, renamed, copied, moved.
  */
 @Extension
 public class AuditItemListener extends ItemListener {
@@ -66,8 +67,7 @@ public class AuditItemListener extends ItemListener {
                 return;
             }
 
-            // Suppress all SYSTEM-initiated item events (branch indexing, SCM polling,
-            // auto-discovery) — not relevant for compliance auditing.
+           
             if ("SYSTEM".equals(username)) {
                 LOGGER.log(Level.FINE, "Suppressing SYSTEM item event: {0} on {1}",
                         new Object[]{action, target});
@@ -82,8 +82,7 @@ public class AuditItemListener extends ItemListener {
     }
 
     private static String currentUser(String affectedObject) {
-        // 1. Try session-based Spring Security context first — preserves original
-        //    logged-in user even when Jenkins impersonates SYSTEM internally
+        
         try {
             jakarta.servlet.http.HttpServletRequest req = RequestHolder.get();
             if (req != null) {
@@ -106,7 +105,7 @@ public class AuditItemListener extends ItemListener {
                 if (p != null && isRealUser(p.getName())) return p.getName();
             }
         } catch (ReflectiveOperationException | RuntimeException ignored) {}
-        // 2. Try Stapler request
+        
         try {
             org.kohsuke.stapler.StaplerRequest2 req = Stapler.getCurrentRequest2();
             if (req != null) {
@@ -116,12 +115,12 @@ public class AuditItemListener extends ItemListener {
                 if (p != null && isRealUser(p.getName())) return p.getName();
             }
         } catch (RuntimeException ignored) {}
-        // 3. Try Jenkins User.current()
+       
         try {
             User u = User.current();
             if (u != null && isRealUser(u.getId())) return u.getId();
         } catch (RuntimeException ignored) {}
-        // 4. Try Spring SecurityContext (thread-local)
+      
         try {
             org.springframework.security.core.Authentication auth =
                     org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
@@ -130,7 +129,7 @@ public class AuditItemListener extends ItemListener {
             }
         } catch (RuntimeException ignored) {}
 
-        // 5. Last resort: check if a recent CLI command correlates with this background event
+        
         if (affectedObject != null) {
             String cliUser = AsyncActionTracker.getInstance().resolveUser(affectedObject, System.currentTimeMillis());
             if (cliUser != null) {

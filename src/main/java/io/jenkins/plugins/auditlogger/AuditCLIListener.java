@@ -38,7 +38,7 @@ public class AuditCLIListener implements CLIListener {
             LOGGER.log(Level.INFO, "CLI_EXECUTION: target={0}, exitCode={1}, user={2}",
                     new Object[]{target, exitCode, username});
 
-            // Register in tracker for async background action fallback
+            
             AsyncActionTracker.getInstance().register(username, command, context.getArgs(), System.currentTimeMillis());
         } catch (Exception e) {
             LOGGER.log(Level.FINE, "Error recording CLI execution", e);

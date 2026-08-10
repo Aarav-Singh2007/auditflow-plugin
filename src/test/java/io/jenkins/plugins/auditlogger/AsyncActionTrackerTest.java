@@ -1,11 +1,11 @@
 package io.jenkins.plugins.auditlogger;
 
+import java.util.Arrays;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import java.util.Arrays;
-import java.util.Collections;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 public class AsyncActionTrackerTest {
 
@@ -14,7 +14,7 @@ public class AsyncActionTrackerTest {
     @BeforeEach
     public void setup() {
         tracker = AsyncActionTracker.getInstance();
-        // Clear tracker state
+        
         tracker.resolveUser(null, Long.MAX_VALUE); // effectively clears all
     }
 
@@ -40,7 +40,7 @@ public class AsyncActionTrackerTest {
     @Test
     public void testResolveUserExpired() {
         long now = System.currentTimeMillis();
-        // Register an event that is 11 seconds old (TTL is 10s)
+       
         tracker.register("userC", "install-plugin", Arrays.asList("git"), now - 11000);
         
         String user = tracker.resolveUser("git", now);
