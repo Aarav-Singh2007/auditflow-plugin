@@ -18,40 +18,44 @@ public class AuditItemListener extends ItemListener {
 
     @Override
     public void onCreated(Item item) {
-        String user = currentUser();
-        log("JOB_CREATED", item.getFullName(),
-                String.format("Job created: %s (type: %s) by %s", item.getFullName(), item.getClass().getSimpleName(), user));
+        String target = item.getFullName();
+        String user = currentUser(target);
+        log("JOB_CREATED", target,
+                String.format("Job created: %s (type: %s) by %s", target, item.getClass().getSimpleName(), user), user);
     }
 
     @Override
     public void onDeleted(Item item) {
-        String user = currentUser();
-        log("JOB_DELETED", item.getFullName(),
-                String.format("Job deleted: %s by %s", item.getFullName(), user));
+        String target = item.getFullName();
+        String user = currentUser(target);
+        log("JOB_DELETED", target,
+                String.format("Job deleted: %s by %s", target, user), user);
     }
 
     @Override
     public void onRenamed(Item item, String oldName, String newName) {
-        String user = currentUser();
-        log("JOB_RENAMED", item.getFullName(),
-                String.format("Job renamed from '%s' to '%s' by %s", oldName, newName, user));
+        String target = item.getFullName();
+        String user = currentUser(target);
+        log("JOB_RENAMED", target,
+                String.format("Job renamed from '%s' to '%s' by %s", oldName, newName, user), user);
     }
 
     @Override
     public void onCopied(Item src, Item copy) {
-        String user = currentUser();
-        log("JOB_COPIED", copy.getFullName(),
-                String.format("Job copied from '%s' by %s", src.getFullName(), user));
+        String target = copy.getFullName();
+        String user = currentUser(target);
+        log("JOB_COPIED", target,
+                String.format("Job copied from '%s' by %s", src.getFullName(), user), user);
     }
 
     @Override
     public void onLocationChanged(Item item, String oldFullName, String newFullName) {
-        String user = currentUser();
+        String user = currentUser(newFullName);
         log("JOB_MOVED", newFullName,
-                String.format("Job moved from '%s' by %s", oldFullName, user));
+                String.format("Job moved from '%s' by %s", oldFullName, user), user);
     }
 
-    private void log(String action, String target, String details) {
+    private void log(String action, String target, String details, String username) {
         try {
             AuditLoggerConfiguration config = AuditLoggerConfiguration.get();
             if (config != null && !config.isEnableJobConfigEvents()) return;
@@ -61,8 +65,6 @@ public class AuditItemListener extends ItemListener {
                         new Object[]{action, target});
                 return;
             }
-
-            String username = currentUser();
 
             // Suppress all SYSTEM-initiated item events (branch indexing, SCM polling,
             // auto-discovery) — not relevant for compliance auditing.
@@ -79,7 +81,7 @@ public class AuditItemListener extends ItemListener {
         }
     }
 
-    private static String currentUser() {
+    private static String currentUser(String affectedObject) {
         // 1. Try session-based Spring Security context first — preserves original
         //    logged-in user even when Jenkins impersonates SYSTEM internally
         try {
@@ -127,6 +129,16 @@ public class AuditItemListener extends ItemListener {
                 return auth.getName();
             }
         } catch (RuntimeException ignored) {}
+
+        // 5. Last resort: check if a recent CLI command correlates with this background event
+        if (affectedObject != null) {
+            String cliUser = AsyncActionTracker.getInstance().resolveUser(affectedObject, System.currentTimeMillis());
+            if (cliUser != null) {
+                LOGGER.log(Level.FINE, "currentUser from AsyncActionTracker for {0}: {1}", new Object[]{affectedObject, cliUser});
+                return cliUser;
+            }
+        }
+
         return "SYSTEM";
     }
 

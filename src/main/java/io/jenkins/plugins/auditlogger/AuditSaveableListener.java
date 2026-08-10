@@ -114,7 +114,21 @@ public class AuditSaveableListener extends SaveableListener {
                 return;
             }
 
-            String username = currentUser();
+            String action;
+            String target;
+
+            if (isJob) {
+                action = "JOB_CONFIG_UPDATED";
+                target = ((Job<?, ?>) o).getFullName();
+            } else if (isUser) {
+                action = "USER_CONFIG_UPDATED";
+                target = ((User) o).getId();
+            } else {
+                action = "GLOBAL_CONFIG_UPDATED";
+                target = o.getClass().getSimpleName();
+            }
+
+            String username = currentUser(target);
 
             // Suppress non-real user (SYSTEM) background saves (e.g. nextBuildNumber updates on build start, automated background job/system saves)
             if (!isRealUser(username)) {
@@ -122,21 +136,12 @@ public class AuditSaveableListener extends SaveableListener {
                 return;
             }
 
-            String action;
-            String target;
             String details;
-
             if (isJob) {
-                action = "JOB_CONFIG_UPDATED";
-                target = ((Job<?, ?>) o).getFullName();
                 details = String.format("Job configuration modified: %s by %s", target, username);
             } else if (isUser) {
-                action = "USER_CONFIG_UPDATED";
-                target = ((User) o).getId();
                 details = String.format("User profile updated: %s by %s", target, username);
             } else {
-                action = "GLOBAL_CONFIG_UPDATED";
-                target = o.getClass().getSimpleName();
                 details = String.format("Global system configuration updated: %s by %s", target, username);
             }
 
@@ -206,8 +211,8 @@ public class AuditSaveableListener extends SaveableListener {
 
     private void logCredentialChange(Saveable o, XmlFile file) {
         try {
-            String username = currentUser();
             String storeName = o.getClass().getSimpleName();
+            String username = currentUser(storeName);
 
             // Extract set of all credential IDs in this store currently
             Set<String> currentIds = extractCredentialIdSet(o);
@@ -457,7 +462,7 @@ public class AuditSaveableListener extends SaveableListener {
         return modified;
     }
 
-    private static String currentUser() {
+    private static String currentUser(String affectedObject) {
         // 0. Try Basic Auth header from HTTP request
         try {
             HttpServletRequest req = RequestHolder.get();
@@ -481,12 +486,17 @@ public class AuditSaveableListener extends SaveableListener {
         try {
             HttpServletRequest request = RequestHolder.get();
             if (request != null) {
-                HttpSession session = request.getSession(false);
-                if (session != null) {
-                    String sessionUser = extractUserFromSession(session);
+                if (request.getSession(false) != null) {
+                    String sessionUser = extractUserFromSession(request.getSession(false));
                     if (isRealUser(sessionUser)) {
                         return sessionUser;
                     }
+                }
+                String authHeader = request.getHeader("Authorization");
+                if (authHeader != null && authHeader.startsWith("Basic ")) {
+                    String decoded = new String(java.util.Base64.getDecoder().decode(authHeader.substring(6)), java.nio.charset.StandardCharsets.UTF_8);
+                    String username = decoded.contains(":") ? decoded.substring(0, decoded.indexOf(':')) : decoded;
+                    if (isRealUser(username)) return username;
                 }
                 if (isRealUser(request.getRemoteUser())) {
                     return request.getRemoteUser();
@@ -538,6 +548,15 @@ public class AuditSaveableListener extends SaveableListener {
                 return authentication.getName();
             }
         } catch (RuntimeException ignored) {}
+
+        // 6. Last resort: check if a recent CLI command correlates with this background event
+        if (affectedObject != null) {
+            String cliUser = AsyncActionTracker.getInstance().resolveUser(affectedObject, System.currentTimeMillis());
+            if (cliUser != null) {
+                LOGGER.log(Level.FINE, "currentUser from AsyncActionTracker for {0}: {1}", new Object[]{affectedObject, cliUser});
+                return cliUser;
+            }
+        }
 
         return "SYSTEM";
     }
